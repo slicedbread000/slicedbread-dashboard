@@ -1,8 +1,15 @@
 import { AppShell } from "@/components/layout/AppShell";
 import { fetchDashboardData } from "@/lib/dashboardApi";
+import { isOk } from "@/lib/typeguards";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EquityChart } from "@/components/dashboard/EquityChart";
 import { NetWorthChart } from "@/components/dashboard/NetWorthChart";
+
+type OkShape = {
+  meta?: { generatedAt?: string };
+  equityCurve?: { rows?: any[] };
+  netWorth?: { rows?: any[] };
+};
 
 function toNumber(x: any): number {
   if (typeof x === "number") return x;
@@ -74,18 +81,21 @@ function parseNetWorth(rows: any[]): { date: string; networth: number }[] {
 
 export default async function Home() {
   const data = await fetchDashboardData();
+  const ok = isOk<OkShape>(data);
 
-  const cumulativePnlData = parseCumulativePnl(data?.equityCurve?.rows ?? []).slice(-365);
-  const netWorthData = parseNetWorth(data?.netWorth?.rows ?? []).slice(-365);
+  const cumulativePnlData = parseCumulativePnl(ok ? (data.equityCurve?.rows ?? []) : []).slice(-365);
+  const netWorthData = parseNetWorth(ok ? (data.netWorth?.rows ?? []) : []).slice(-365);
+
+  const subtitle = ok
+    ? `Last refresh: ${data.meta?.generatedAt ?? "Unknown"}`
+    : `Data error: ${(data as any)?.error ?? "Unknown error"}`;
 
   return (
     <AppShell>
       <div className="space-y-6">
         <div>
           <div className="text-xl font-semibold tracking-tight">Overview</div>
-          <div className="text-sm text-muted-foreground">
-            Last refresh: {data?.meta?.generatedAt ?? "Unknown"}
-          </div>
+          <div className="text-sm text-muted-foreground">{subtitle}</div>
         </div>
 
         <Card className="rounded-2xl">
