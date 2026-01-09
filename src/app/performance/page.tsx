@@ -198,4 +198,3 @@ export default async function PerformancePage() {
     </AppShell>
   );
 }
-```0
