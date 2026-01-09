@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/layout/AppShell";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { fetchDashboardData } from "@/lib/dashboardApi";
 import { isOk } from "@/lib/typeguards";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -42,10 +43,8 @@ function parseCumulativePnl(rows: any[]): { date: string; equity: number }[] {
     })
     .filter(Boolean) as { d: Date; cum: number }[];
 
-  // sort ascending
   parsed.sort((a, b) => a.d.getTime() - b.d.getTime());
 
-  // de-dupe by day (keep last)
   const byDay = new Map<string, number>();
   for (const p of parsed) {
     const key = p.d.toISOString().slice(0, 10);
@@ -54,7 +53,7 @@ function parseCumulativePnl(rows: any[]): { date: string; equity: number }[] {
 
   return Array.from(byDay.entries()).map(([date, cum]) => ({
     date,
-    equity: cum, // plotted line value
+    equity: cum,
   }));
 }
 
@@ -93,12 +92,9 @@ export default async function Home() {
   return (
     <AppShell>
       <div className="space-y-6">
-        <div>
-          <div className="text-xl font-semibold tracking-tight">Overview</div>
-          <div className="text-sm text-muted-foreground">{subtitle}</div>
-        </div>
+        <PageHeader title="Overview" subtitle={subtitle} />
 
-        <Card className="rounded-2xl">
+        <Card className="rounded-2xl border-border/70 bg-card/40 backdrop-blur">
           <CardHeader>
             <CardTitle className="text-sm font-semibold">Cumulative PnL</CardTitle>
           </CardHeader>
@@ -107,7 +103,7 @@ export default async function Home() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-2xl">
+        <Card className="rounded-2xl border-border/70 bg-card/40 backdrop-blur">
           <CardHeader>
             <CardTitle className="text-sm font-semibold">Net Worth</CardTitle>
           </CardHeader>
