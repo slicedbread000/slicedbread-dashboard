@@ -1,28 +1,17 @@
 "use client";
 
 import {
-  ResponsiveContainer,
-  CartesianGrid,
+  ScatterChart,
+  Scatter,
   XAxis,
   YAxis,
   Tooltip,
-  ScatterChart,
-  Scatter,
+  ResponsiveContainer,
+  CartesianGrid,
 } from "recharts";
 
-function extent(data: any[], key: string): [number, number] | null {
-  let min = Infinity;
-  let max = -Infinity;
-  for (const r of data) {
-    const v = r?.[key];
-    if (typeof v !== "number" || !Number.isFinite(v)) continue;
-    if (v < min) min = v;
-    if (v > max) max = v;
-  }
-  if (!Number.isFinite(min) || !Number.isFinite(max)) return null;
-  if (min === max) return [min - 1, max + 1];
-  const pad = (max - min) * 0.08;
-  return [min - pad, max + pad];
+function hsl(varName: string, alpha = 1) {
+  return `hsl(var(${varName}) / ${alpha})`;
 }
 
 export function ScatterPlot({
@@ -38,19 +27,35 @@ export function ScatterPlot({
     return <div className="text-sm text-muted-foreground">No data.</div>;
   }
 
-  const xDom = extent(data, xKey) ?? ["auto", "auto"];
-  const yDom = extent(data, yKey) ?? ["auto", "auto"];
-
   return (
     <div className="w-full">
-      <div className="w-full aspect-[16/6] min-h-[240px]">
+      <div className="w-full aspect-[16/6] min-h-[260px] rounded-xl border border-border/70 bg-card/30 p-2">
         <ResponsiveContainer width="100%" height="100%">
-          <ScatterChart>
-            <CartesianGrid strokeDasharray="3 3" opacity={0.25} />
-            <XAxis dataKey={xKey} tick={{ fontSize: 12 }} type="number" domain={xDom as any} />
-            <YAxis dataKey={yKey} tick={{ fontSize: 12 }} width={80} type="number" domain={yDom as any} />
-            <Tooltip />
-            <Scatter data={data} />
+          <ScatterChart margin={{ top: 8, right: 12, left: 8, bottom: 6 }}>
+            <CartesianGrid stroke={hsl("--border", 0.35)} strokeDasharray="3 6" />
+            <XAxis
+              dataKey={xKey}
+              tick={{ fontSize: 12, fill: hsl("--muted-foreground", 0.9) }}
+              axisLine={{ stroke: hsl("--border", 0.5) }}
+              tickLine={{ stroke: hsl("--border", 0.5) }}
+            />
+            <YAxis
+              dataKey={yKey}
+              tick={{ fontSize: 12, fill: hsl("--muted-foreground", 0.9) }}
+              axisLine={{ stroke: hsl("--border", 0.5) }}
+              tickLine={{ stroke: hsl("--border", 0.5) }}
+              width={84}
+            />
+            <Tooltip
+              contentStyle={{
+                background: hsl("--card", 0.9),
+                border: `1px solid ${hsl("--border", 0.7)}`,
+                borderRadius: 12,
+                color: hsl("--foreground", 0.95),
+              }}
+              labelStyle={{ color: hsl("--muted-foreground", 0.95) }}
+            />
+            <Scatter data={data} fill={hsl("--primary", 0.7)} />
           </ScatterChart>
         </ResponsiveContainer>
       </div>

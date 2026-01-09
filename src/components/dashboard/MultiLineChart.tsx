@@ -8,105 +8,84 @@ import {
   Tooltip,
   ResponsiveContainer,
   CartesianGrid,
+  Legend,
 } from "recharts";
 
-export type MultiLinePoint = Record<string, any> & { date: string };
-
-function yDomainFor(
-  data: MultiLinePoint[],
-  keys: string[]
-): [number, number] | ["auto", "auto"] {
-  let min = Infinity;
-  let max = -Infinity;
-
-  for (const row of data) {
-    for (const k of keys) {
-      const v = row?.[k];
-      if (typeof v !== "number" || !Number.isFinite(v)) continue;
-      if (v < min) min = v;
-      if (v > max) max = v;
-    }
-  }
-
-  if (!Number.isFinite(min) || !Number.isFinite(max)) return ["auto", "auto"];
-  if (min === max) return [min - 1, max + 1];
-
-  const pad = (max - min) * 0.08;
-  return [min - pad, max + pad];
+function hsl(varName: string, alpha = 1) {
+  return `hsl(var(${varName}) / ${alpha})`;
 }
 
-function formatTick(v: any): string {
-  const n = typeof v === "number" ? v : Number(v);
-  if (!Number.isFinite(n)) return "";
-
-  const abs = Math.abs(n);
-
-  // avoid ugly floating point tails like 89.99999999999999
-  const decimals =
-    abs >= 1000 ? 0 :
-    abs >= 1 ? 2 :
-    abs >= 0.01 ? 4 :
-    6;
-
-  return n.toLocaleString(undefined, {
-    maximumFractionDigits: decimals,
-    minimumFractionDigits: 0,
-  });
-}
+type LineDef = {
+  key: string;
+  label: string;
+  stroke?: string;
+  strokeWidth?: number;
+  strokeDasharray?: string;
+};
 
 export function MultiLineChart({
   data,
   lines,
-  curve = "monotone",
-  tightYAxis = true,
+  curve = "linear",
 }: {
-  data: MultiLinePoint[];
-  lines: {
-    key: string;
-    label: string;
-    stroke?: string;
-    strokeWidth?: number;
-    strokeDasharray?: string;
-    dot?: boolean;
-  }[];
-  curve?: "monotone" | "linear";
-  tightYAxis?: boolean;
+  data: any[];
+  lines: LineDef[];
+  curve?: "linear" | "monotone";
 }) {
   if (!data || data.length === 0) {
     return <div className="text-sm text-muted-foreground">No data.</div>;
   }
 
-  const keys = lines.map((l) => l.key);
-  const domain = tightYAxis ? yDomainFor(data, keys) : ["auto", "auto"];
+  const fallbackStrokes = [
+    hsl("--primary", 0.95),
+    hsl("--chart-2", 0.95),
+    hsl("--chart-3", 0.95),
+    hsl("--chart-4", 0.95),
+    hsl("--chart-5", 0.95),
+  ];
 
   return (
     <div className="w-full">
-      <div className="w-full aspect-[16/6] min-h-[240px]">
+      <div className="w-full aspect-[16/6] min-h-[260px] rounded-xl border border-border/70 bg-card/30 p-2">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" opacity={0.25} />
-            <XAxis dataKey="date" tick={{ fontSize: 12 }} minTickGap={24} />
+          <LineChart data={data} margin={{ top: 8, right: 12, left: 8, bottom: 6 }}>
+            <CartesianGrid stroke={hsl("--border", 0.35)} strokeDasharray="3 6" />
+            <XAxis
+              dataKey="date"
+              tick={{ fontSize: 12, fill: hsl("--muted-foreground", 0.9) }}
+              axisLine={{ stroke: hsl("--border", 0.5) }}
+              tickLine={{ stroke: hsl("--border", 0.5) }}
+              minTickGap={26}
+            />
             <YAxis
-              tick={{ fontSize: 12 }}
-              width={80}
-              domain={domain as any}
-              tickFormatter={formatTick}
+              tick={{ fontSize: 12, fill: hsl("--muted-foreground", 0.9) }}
+              axisLine={{ stroke: hsl("--border", 0.5) }}
+              tickLine={{ stroke: hsl("--border", 0.5) }}
+              width={84}
             />
             <Tooltip
-              formatter={(value: any) => formatTick(value)}
-              labelFormatter={(label: any) => String(label)}
+              contentStyle={{
+                background: hsl("--card", 0.9),
+                border: `1px solid ${hsl("--border", 0.7)}`,
+                borderRadius: 12,
+                color: hsl("--foreground", 0.95),
+              }}
+              labelStyle={{ color: hsl("--muted-foreground", 0.95) }}
             />
-            {lines.map((l) => (
+            <Legend
+              wrapperStyle={{ color: hsl("--muted-foreground", 0.95), fontSize: 12 }}
+            />
+            {lines.map((l, i) => (
               <Line
                 key={l.key}
                 type={curve}
                 dataKey={l.key}
                 name={l.label}
-                dot={l.dot ?? false}
+                dot={false}
+                stroke={l.stroke ?? fallbackStrokes[i % fallbackStrokes.length]}
                 strokeWidth={l.strokeWidth ?? 2}
-                stroke={l.stroke}
                 strokeDasharray={l.strokeDasharray}
-                isAnimationActive={false}
+                connectNulls
               />
             ))}
           </LineChart>
