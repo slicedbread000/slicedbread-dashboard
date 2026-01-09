@@ -253,6 +253,8 @@ export default async function RiskPage() {
               data={scatterData}
               xKey="expectancy"
               yKey="risk_pct"
+              xTooltipLabel="Expectancy"
+              yTooltipLabel="Risk %"
             />
           </CardContent>
         </Card>
@@ -298,7 +300,7 @@ export default async function RiskPage() {
             <CardTitle className="text-sm font-semibold">Consecutive Losses</CardTitle>
           </CardHeader>
           <CardContent>
-            <ColumnChart data={lossStreak} mode="lossOnly" />
+            <ColumnChart data={lossStreak} mode="lossOnly" valueLabel="Consecutive Losses" />
           </CardContent>
         </Card>
       </div>
