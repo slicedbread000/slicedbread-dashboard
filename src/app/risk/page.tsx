@@ -8,6 +8,7 @@ import { MultiLineChart } from "@/components/dashboard/MultiLineChart";
 import { ColumnChart } from "@/components/dashboard/ColumnChart";
 import { ScatterPlot } from "@/components/dashboard/ScatterPlot";
 import { EquityChart } from "@/components/dashboard/EquityChart";
+import { classifyKpi, formatKpiNumber, toNumber } from "@/lib/kpi";
 
 type OkShape = {
   meta?: { generatedAt?: string };
@@ -16,12 +17,6 @@ type OkShape = {
   edgeExposureRolling?: { edge?: any[]; exposure?: any[] };
   expectancyRiskScatter?: { rows?: any[] };
 };
-
-function toNumber(x: any): number {
-  if (typeof x === "number") return x;
-  const n = Number(String(x ?? "").replace(/[^0-9.\-]/g, ""));
-  return Number.isFinite(n) ? n : NaN;
-}
 
 function toDate(x: any): Date | null {
   if (!x) return null;
@@ -41,7 +36,7 @@ function lineSeries(rows: any[], dateKey: string, valKey: string) {
     .map((r) => {
       const d = toDate(r?.[dateKey]);
       const v = toNumber(r?.[valKey]);
-      if (!d || !Number.isFinite(v)) return null;
+      if (!d || v === null) return null;
       return { d, v };
     })
     .filter(Boolean) as { d: Date; v: number }[];
@@ -54,7 +49,7 @@ function barSeries(rows: any[], dateKey: string, valKey: string) {
     .map((r) => {
       const d = toDate(r?.[dateKey]);
       const v = toNumber(r?.[valKey]);
-      if (!d || !Number.isFinite(v)) return null;
+      if (!d || v === null) return null;
       return { d, v };
     })
     .filter(Boolean) as { d: Date; v: number }[];
@@ -70,12 +65,6 @@ function latestString(rows: any[], key: string): string | null {
   return null;
 }
 
-function fmtMaybeNumber(v: any) {
-  const n = toNumber(v);
-  if (!Number.isFinite(n)) return v ?? "—";
-  return new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(n);
-}
-
 export default async function RiskPage() {
   const data = await fetchDashboardData();
   const ok = isOk<OkShape>(data);
@@ -87,10 +76,30 @@ export default async function RiskPage() {
     : `Data error: ${(data as any)?.error ?? "Unknown error"}`;
 
   // KPIs
-  const drawdownPct = latestString(rsRows, "drawdown_pct");
+  const drawdownPctRaw = latestString(rsRows, "drawdown_pct");
   const peakEquity = ok ? data.kpis?.peak_equity_latest ?? null : null;
 
-  // Perfect charts (keep)
+  // drawdown_pct could be "-0.12" or "-12%" etc; handle both
+  const ddPctNum = toNumber(drawdownPctRaw);
+  const drawdownPctDisplay =
+    ddPctNum === null
+      ? drawdownPctRaw ?? "—"
+      : // if it looks like a decimal (abs <= 1.5), show percent
+        Math.abs(ddPctNum) <= 1.5
+      ? formatKpiNumber(ddPctNum, { multiply: 100, decimals: 2, suffix: "%" })
+      : formatKpiNumber(ddPctNum, { decimals: 2, suffix: "%" });
+
+  // intents
+  // drawdown%: closer to 0 is better (less negative)
+  const intentDrawdownPct = classifyKpi(ddPctNum, {
+    kind: "higherBetter",
+    goodGte: -2, // better than -2% (or -2 if already percent-ish)
+    badLte: -6,  // worse than -6%
+  });
+
+  const intentPeakEquity = classifyKpi(peakEquity, { kind: "higherBetter" });
+
+  // Charts (keep)
   const riskPct = lineSeries(rsRows, "date", "risk_pct");
   const recovery = lineSeries(rsRows, "date", "recovery_pct");
   const lossStreak = barSeries(rsRows, "date", "loss_streak");
@@ -103,25 +112,22 @@ export default async function RiskPage() {
       const b3 = toNumber(r["band_-3%"]);
       const b45 = toNumber(r["band_-4.5%"]);
       const b525 = toNumber(r["band_-5.25%"]);
-      if (!d || !Number.isFinite(equity)) return null;
+      if (!d || equity === null) return null;
       return { d, equity, b3, b45, b525 };
     })
-    .filter(Boolean) as { d: Date; equity: number; b3: number; b45: number; b525: number }[];
+    .filter(Boolean) as { d: Date; equity: number; b3: number | null; b45: number | null; b525: number | null }[];
 
   zonePts.sort((a, b) => a.d.getTime() - b.d.getTime());
 
-  const zonesByDay = new Map<
-    string,
-    { equity: number; b3?: number; b45?: number; b525?: number }
-  >();
+  const zonesByDay = new Map<string, { equity: number; b3?: number; b45?: number; b525?: number }>();
 
   for (const p of zonePts) {
     const key = p.d.toISOString().slice(0, 10);
     zonesByDay.set(key, {
       equity: p.equity,
-      b3: Number.isFinite(p.b3) ? p.b3 : undefined,
-      b45: Number.isFinite(p.b45) ? p.b45 : undefined,
-      b525: Number.isFinite(p.b525) ? p.b525 : undefined,
+      b3: p.b3 ?? undefined,
+      b45: p.b45 ?? undefined,
+      b525: p.b525 ?? undefined,
     });
   }
 
@@ -143,7 +149,7 @@ export default async function RiskPage() {
   for (const r of edgeRows) {
     const d = toDate(r?.date);
     const v = toNumber(r?.value);
-    if (!d || !Number.isFinite(v)) continue;
+    if (!d || v === null) continue;
     edgeMap.set(d.toISOString().slice(0, 10), v);
   }
 
@@ -151,7 +157,7 @@ export default async function RiskPage() {
   for (const r of exposureRows) {
     const d = toDate(r?.date);
     const v = toNumber(r?.value);
-    if (!d || !Number.isFinite(v)) continue;
+    if (!d || v === null) continue;
     exposureMap.set(d.toISOString().slice(0, 10), v);
   }
 
@@ -171,7 +177,7 @@ export default async function RiskPage() {
     .map((r) => {
       const x = toNumber(r?.expectancy);
       const y = toNumber(r?.risk_pct);
-      if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+      if (x === null || y === null) return null;
       return { expectancy: x, risk_pct: y };
     })
     .filter(Boolean) as any[];
@@ -182,8 +188,12 @@ export default async function RiskPage() {
 
       {/* KPI strip */}
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="Drawdown %" value={drawdownPct ?? "—"} />
-        <KpiCard label="Peak Equity" value={fmtMaybeNumber(peakEquity)} />
+        <KpiCard label="Drawdown %" value={drawdownPctDisplay} intent={intentDrawdownPct} />
+        <KpiCard
+          label="Peak Equity"
+          value={formatKpiNumber(peakEquity, { decimals: 0 })}
+          intent={intentPeakEquity}
+        />
       </div>
 
       {/* Chart grid */}
