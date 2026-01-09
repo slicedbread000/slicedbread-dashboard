@@ -8,6 +8,7 @@ import {
   YAxis,
   Tooltip,
   CartesianGrid,
+  Legend,
 } from "recharts";
 
 type Props = {
@@ -15,14 +16,16 @@ type Props = {
   xKey: string;
   yKey: string;
 
-  // Optional: if you ever want labels later, keep these.
-  // For your current requirement: do NOT pass them -> no axis titles.
+  // keep for optional future axis titles (you currently want them OFF)
   xLabel?: string;
   yLabel?: string;
 
-  // Optional: tooltip legend labels (defaults to xLabel/yLabel or xKey/yKey)
+  // tooltip labels (legend-style)
   xTooltipLabel?: string;
   yTooltipLabel?: string;
+
+  // legend label for the series
+  seriesLabel?: string;
 };
 
 function num(x: any): number | null {
@@ -38,9 +41,36 @@ function formatNumber(v: any) {
   }).format(n);
 }
 
+function TooltipRow({
+  color,
+  label,
+  value,
+}: {
+  color: string;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-6 text-sm">
+      <div className="flex items-center gap-2">
+        <span
+          className="inline-block h-2.5 w-2.5 rounded-full"
+          style={{ background: color }}
+        />
+        <span className="text-muted-foreground">{label}</span>
+      </div>
+      <span className="font-medium tabular-nums" style={{ color }}>
+        {value}
+      </span>
+    </div>
+  );
+}
+
 function TooltipBox({
   active,
   payload,
+  xKey,
+  yKey,
   xLabel,
   yLabel,
 }: any) {
@@ -48,30 +78,16 @@ function TooltipBox({
 
   const p = payload[0];
   const color = p.color || "hsl(var(--primary) / 0.95)";
-
-  // Recharts passes the original point in p.payload
   const point = p.payload || {};
 
-  // Prefer explicit keys when present, otherwise fall back to common names
-  const x = point?.[p.xKey] ?? point?.expectancy ?? point?.x;
-  const y = point?.[p.yKey] ?? point?.risk_pct ?? point?.y;
+  const x = point?.[xKey] ?? point?.x;
+  const y = point?.[yKey] ?? point?.y;
 
   return (
     <div className="rounded-xl border bg-popover/95 p-3 shadow-sm backdrop-blur text-popover-foreground">
-      <div className="space-y-1 text-sm">
-        <div className="flex justify-between gap-6">
-          <span className="text-muted-foreground">{xLabel}</span>
-          <span style={{ color }} className="font-medium tabular-nums">
-            {formatNumber(x)}
-          </span>
-        </div>
-        <div className="flex justify-between gap-6">
-          <span className="text-muted-foreground">{yLabel}</span>
-          <span style={{ color }} className="font-medium tabular-nums">
-            {formatNumber(y)}
-          </span>
-        </div>
-      </div>
+      <TooltipRow color={color} label={xLabel} value={formatNumber(x)} />
+      <div className="h-2" />
+      <TooltipRow color={color} label={yLabel} value={formatNumber(y)} />
     </div>
   );
 }
@@ -84,6 +100,7 @@ export function ScatterPlot({
   yLabel,
   xTooltipLabel,
   yTooltipLabel,
+  seriesLabel,
 }: Props) {
   if (!data || data.length === 0) {
     return <div className="text-sm text-muted-foreground">No data.</div>;
@@ -91,12 +108,10 @@ export function ScatterPlot({
 
   const dot = "hsl(var(--primary) / 0.95)";
 
-  // Tooltip legend labels:
-  // Use explicit tooltip labels if provided,
-  // else use axis labels,
-  // else fall back to keys.
-  const xTip = xTooltipLabel ?? xLabel ?? xKey;
-  const yTip = yTooltipLabel ?? yLabel ?? yKey;
+  const xTip = xTooltipLabel ?? xKey;
+  const yTip = yTooltipLabel ?? yKey;
+
+  const name = seriesLabel ?? "Points";
 
   return (
     <div className="w-full">
@@ -110,7 +125,7 @@ export function ScatterPlot({
               type="number"
               tick={{ fontSize: 12 }}
               tickFormatter={formatNumber}
-              // Axis titles OFF by default unless you pass xLabel
+              // axis titles OFF unless you pass xLabel
               label={
                 xLabel
                   ? {
@@ -129,7 +144,7 @@ export function ScatterPlot({
               tick={{ fontSize: 12 }}
               width={80}
               tickFormatter={formatNumber}
-              // Axis titles OFF by default unless you pass yLabel
+              // axis titles OFF unless you pass yLabel
               label={
                 yLabel
                   ? {
@@ -145,16 +160,22 @@ export function ScatterPlot({
             <Tooltip
               content={
                 <TooltipBox
-                  xLabel={xTip}
-                  yLabel={yTip}
-                  // pass keys so the tooltip reads the correct fields
                   xKey={xKey}
                   yKey={yKey}
+                  xLabel={xTip}
+                  yLabel={yTip}
                 />
               }
             />
 
-            <Scatter name="Points" data={data} fill={dot} />
+            <Legend
+              verticalAlign="top"
+              align="left"
+              iconType="circle"
+              wrapperStyle={{ paddingBottom: 8 }}
+            />
+
+            <Scatter name={name} data={data} fill={dot} />
           </ScatterChart>
         </ResponsiveContainer>
       </div>

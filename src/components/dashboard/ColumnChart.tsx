@@ -9,6 +9,7 @@ import {
   Tooltip,
   CartesianGrid,
   Cell,
+  Legend,
 } from "recharts";
 
 type Mode = "default" | "lossOnly" | "posNeg";
@@ -30,38 +31,55 @@ function fmtNumber(v: number) {
   return v.toLocaleString(undefined, { maximumFractionDigits: 4 });
 }
 
+function TooltipRow({
+  color,
+  label,
+  value,
+}: {
+  color: string;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-6 text-sm">
+      <div className="flex items-center gap-2">
+        <span
+          className="inline-block h-2.5 w-2.5 rounded-full"
+          style={{ background: color }}
+        />
+        <span className="text-muted-foreground">{label}</span>
+      </div>
+      <span className="font-medium tabular-nums" style={{ color }}>
+        {value}
+      </span>
+    </div>
+  );
+}
+
 function CustomTooltip({
   active,
   label,
   payload,
-  valueLabel,
+  seriesLabel,
 }: any) {
   if (!active || !payload || payload.length === 0) return null;
 
   const p0 = payload[0];
   const value = typeof p0?.value === "number" ? p0.value : Number(p0?.value);
-  const barColor = p0?.payload?.fill || p0?.fill || p0?.color || "hsl(var(--foreground))";
+  const barColor =
+    p0?.payload?.fill || p0?.fill || p0?.color || "hsl(var(--foreground))";
 
   return (
-    <div
-      style={{
-        background: "hsl(var(--popover))",
-        border: "1px solid hsl(var(--border))",
-        color: "hsl(var(--foreground))",
-        borderRadius: 12,
-        padding: "10px 12px",
-      }}
-    >
-      {/* X axis label stays normal */}
-      <div style={{ fontSize: 12, opacity: 0.9, marginBottom: 6 }}>{label}</div>
+    <div className="rounded-xl border bg-popover/95 p-3 shadow-sm backdrop-blur text-popover-foreground">
+      {/* X-axis label (date) */}
+      <div className="mb-2 text-xs text-muted-foreground">{label}</div>
 
-      {/* Descriptor + value colored to match bar */}
-      <div style={{ fontSize: 12, opacity: 0.85, marginBottom: 2 }}>
-        {valueLabel ?? "Value"}
-      </div>
-      <div style={{ fontSize: 14, fontWeight: 700, color: barColor }}>
-        {Number.isFinite(value) ? fmtNumber(value) : String(p0?.value ?? "")}
-      </div>
+      {/* Dot + label + colored value */}
+      <TooltipRow
+        color={barColor}
+        label={seriesLabel ?? "Value"}
+        value={Number.isFinite(value) ? fmtNumber(value) : String(p0?.value ?? "")}
+      />
     </div>
   );
 }
@@ -86,7 +104,6 @@ export function ColumnChart({
     return <div className="text-sm text-muted-foreground">No data.</div>;
   }
 
-  // Colors (dark theme friendly)
   const green = "hsl(var(--primary) / 0.90)";
   const red = "hsl(0 75% 55% / 0.85)";
 
@@ -97,6 +114,8 @@ export function ColumnChart({
     return { ...r, fill };
   });
 
+  const seriesName = valueLabel ?? "Value";
+
   return (
     <div className="w-full">
       <div className="w-full aspect-[16/6] min-h-[240px]">
@@ -105,8 +124,17 @@ export function ColumnChart({
             <CartesianGrid strokeDasharray="3 3" opacity={0.25} />
             <XAxis dataKey="date" tick={{ fontSize: 12 }} minTickGap={24} />
             <YAxis tick={{ fontSize: 12 }} width={80} />
-            <Tooltip content={<CustomTooltip valueLabel={valueLabel} />} />
-            <Bar dataKey="value" name={valueLabel ?? "Value"} radius={[6, 6, 2, 2]}>
+
+            <Tooltip content={<CustomTooltip seriesLabel={seriesName} />} />
+
+            <Legend
+              verticalAlign="top"
+              align="left"
+              iconType="circle"
+              wrapperStyle={{ paddingBottom: 8 }}
+            />
+
+            <Bar dataKey="value" name={seriesName} radius={[6, 6, 2, 2]}>
               {shaped.map((entry, idx) => (
                 <Cell key={`cell-${idx}`} fill={entry.fill} />
               ))}
