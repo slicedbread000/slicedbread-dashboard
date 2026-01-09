@@ -8,7 +8,6 @@ import {
   Tooltip,
   ResponsiveContainer,
   CartesianGrid,
-  Legend,
 } from "recharts";
 
 type Point = { date: string; equity: number };
@@ -72,7 +71,6 @@ export function EquityChart({ data }: { data: Point[] }) {
   }
 
   const stroke = "hsl(var(--primary) / 0.95)";
-  const seriesName = "Value";
 
   return (
     <div className="w-full">
@@ -82,20 +80,11 @@ export function EquityChart({ data }: { data: Point[] }) {
             <CartesianGrid strokeDasharray="3 3" opacity={0.18} />
             <XAxis dataKey="date" tick={{ fontSize: 12 }} minTickGap={24} />
             <YAxis tick={{ fontSize: 12 }} width={80} tickFormatter={formatNumber} />
-
             <Tooltip content={<TooltipBox />} />
-
-            <Legend
-              verticalAlign="top"
-              align="left"
-              iconType="circle"
-              wrapperStyle={{ paddingBottom: 8 }}
-            />
-
             <Line
               type="monotone"
               dataKey="equity"
-              name={seriesName}
+              name="Value"
               dot={false}
               strokeWidth={2.4}
               stroke={stroke}
@@ -106,4 +95,3 @@ export function EquityChart({ data }: { data: Point[] }) {
     </div>
   );
 }
-
