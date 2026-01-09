@@ -26,13 +26,6 @@ function toDate(x: any): Date | null {
   return null;
 }
 
-/**
- * Cumulative PnL curve from equityCurve:
- * headers: ["date","daily_net_pnl","cumulative_pnl","drawdown"]
- *
- * We map it into the EquityChart shape { date, equity } by using:
- *   equity := cumulative_pnl
- */
 function parseCumulativePnl(rows: any[]): { date: string; equity: number }[] {
   const parsed = (rows || [])
     .map((r) => {
@@ -51,10 +44,7 @@ function parseCumulativePnl(rows: any[]): { date: string; equity: number }[] {
     byDay.set(key, p.cum);
   }
 
-  return Array.from(byDay.entries()).map(([date, cum]) => ({
-    date,
-    equity: cum,
-  }));
+  return Array.from(byDay.entries()).map(([date, cum]) => ({ date, equity: cum }));
 }
 
 function parseNetWorth(rows: any[]): { date: string; networth: number }[] {
@@ -85,33 +75,32 @@ export default async function Home() {
   const cumulativePnlData = parseCumulativePnl(ok ? (data.equityCurve?.rows ?? []) : []).slice(-365);
   const netWorthData = parseNetWorth(ok ? (data.netWorth?.rows ?? []) : []).slice(-365);
 
-  const subtitle = ok
-    ? `Last refresh: ${data.meta?.generatedAt ?? "Unknown"}`
-    : `Data error: ${(data as any)?.error ?? "Unknown error"}`;
+  const refreshAt = ok ? (data.meta?.generatedAt ?? null) : null;
+  const status = ok ? "ok" : "error";
+  const subtitle = ok ? "System overview and capital trajectory." : `Data error: ${(data as any)?.error ?? "Unknown error"}`;
+  const pillText = refreshAt ? `Last refresh: ${refreshAt}` : undefined;
 
   return (
     <AppShell>
-      <div className="space-y-6">
-        <PageHeader title="Overview" subtitle={subtitle} />
+      <PageHeader title="Command Center" subtitle={subtitle} status={status} pillText={pillText} />
 
-        <Card className="rounded-2xl border-border/70 bg-card/40 backdrop-blur">
-          <CardHeader>
-            <CardTitle className="text-sm font-semibold">Cumulative PnL</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <EquityChart data={cumulativePnlData} />
-          </CardContent>
-        </Card>
+      <Card className="rounded-2xl">
+        <CardHeader>
+          <CardTitle className="text-sm font-semibold">Cumulative PnL</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <EquityChart data={cumulativePnlData} />
+        </CardContent>
+      </Card>
 
-        <Card className="rounded-2xl border-border/70 bg-card/40 backdrop-blur">
-          <CardHeader>
-            <CardTitle className="text-sm font-semibold">Net Worth</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <NetWorthChart data={netWorthData} />
-          </CardContent>
-        </Card>
-      </div>
+      <Card className="rounded-2xl">
+        <CardHeader>
+          <CardTitle className="text-sm font-semibold">Net Worth</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <NetWorthChart data={netWorthData} />
+        </CardContent>
+      </Card>
     </AppShell>
   );
 }

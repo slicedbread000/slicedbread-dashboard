@@ -3,19 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Separator } from "@/components/ui/separator";
-import {
-  LayoutDashboard,
-  TrendingUp,
-  Bot,
-  ShieldAlert,
-  Lock,
-} from "lucide-react";
 
 const nav = [
-  { href: "/", label: "Command Center", icon: LayoutDashboard },
-  { href: "/performance", label: "Performance Summary", icon: TrendingUp },
-  { href: "/bots", label: "Bot States", icon: Bot },
-  { href: "/risk", label: "Risk State", icon: ShieldAlert },
+  { href: "/", label: "Command Center" },
+  { href: "/performance", label: "Performance Summary" },
+  { href: "/bots", label: "Bot States" },
+  { href: "/risk", label: "Risk State" },
 ];
 
 function cx(...classes: Array<string | false | null | undefined>) {
@@ -24,8 +17,7 @@ function cx(...classes: Array<string | false | null | undefined>) {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isActive = (href: string) =>
-    href === "/" ? pathname === "/" : pathname?.startsWith(href);
+  const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname?.startsWith(href));
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -42,13 +34,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="px-6 py-6">
             <div className="flex items-center gap-2">
               <div className="h-2 w-2 rounded-full bg-primary shadow-[0_0_0_4px_hsl(var(--primary)/0.16)]" />
-              <div className="text-sm font-semibold tracking-tight">
-                Slicedbread
-              </div>
+              <div className="text-sm font-semibold tracking-tight">Slicedbread</div>
             </div>
-            <div className="mt-1 text-xs text-muted-foreground">
-              Trading Dashboard
-            </div>
+            <div className="mt-1 text-xs text-muted-foreground">Trading Dashboard</div>
           </div>
 
           <Separator className="opacity-60" />
@@ -56,14 +44,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <nav className="px-3 py-3 text-sm space-y-1">
             {nav.map((item) => {
               const active = isActive(item.href);
-              const Icon = item.icon;
-
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   className={cx(
-                    "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 transition",
+                    "group relative flex items-center justify-between rounded-xl px-3 py-2.5 transition",
                     "border border-transparent",
                     "hover:bg-accent/50 hover:border-border/60",
                     active && "bg-accent/55 border-border/70"
@@ -73,36 +59,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   <span
                     className={cx(
                       "absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1 rounded-r-full transition",
-                      active
-                        ? "bg-primary/90"
-                        : "bg-primary/0 group-hover:bg-primary/40"
+                      active ? "bg-primary/90" : "bg-primary/0 group-hover:bg-primary/40"
                     )}
                   />
-
-                  <Icon
-                    className={cx(
-                      "h-4 w-4",
-                      active
-                        ? "text-primary"
-                        : "text-muted-foreground group-hover:text-foreground"
-                    )}
-                  />
-
-                  <span
-                    className={cx(
-                      "font-medium",
-                      active ? "text-foreground" : "text-foreground/90"
-                    )}
-                  >
+                  <span className={cx("font-medium", active ? "text-foreground" : "text-foreground/90")}>
                     {item.label}
                   </span>
-
                   <span
                     className={cx(
-                      "ml-auto h-1.5 w-1.5 rounded-full transition",
-                      active
-                        ? "bg-primary/90"
-                        : "bg-primary/0 group-hover:bg-primary/70"
+                      "h-1.5 w-1.5 rounded-full transition",
+                      active ? "bg-primary/90" : "bg-primary/0 group-hover:bg-primary/70"
                     )}
                   />
                 </Link>
@@ -112,22 +78,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
           <div className="mt-auto px-6 py-5">
             <div className="rounded-2xl border border-border/70 bg-card/50 px-4 py-3 shadow-[0_0_0_1px_hsl(var(--primary)/0.06)]">
-              <div className="flex items-center justify-between">
-                <div className="text-xs font-medium text-foreground/90">
-                  Hyperliquid
-                </div>
-                <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                  <Lock className="h-3.5 w-3.5" />
-                  Protected
-                </span>
-              </div>
-
-              <div className="mt-1 text-[11px] text-muted-foreground">
-                Internal • Auto-updated daily
-              </div>
-
+              <div className="text-xs font-medium text-foreground/90">Hyperliquid</div>
+              <div className="text-[11px] text-muted-foreground">Internal • Auto-updated daily</div>
               <div className="mt-2 h-px bg-border/60" />
-
               <div className="mt-2 text-[11px] text-muted-foreground">
                 Theme: <span className="text-foreground/80">Dark Emerald</span>
               </div>
@@ -141,24 +94,27 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <header className="border-b border-border/70 bg-card/25 backdrop-blur">
             <div className="mx-auto max-w-7xl px-6 py-4 flex items-center justify-between">
               <div>
-                <div className="text-sm font-semibold tracking-tight">
-                  Dashboard
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  Auto-updated from Sheets API
-                </div>
+                <div className="text-sm font-semibold tracking-tight">Dashboard</div>
+                <div className="text-xs text-muted-foreground">Auto-updated from Sheets API</div>
               </div>
 
-              <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground">
-                <span className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/40 px-3 py-1.5 shadow-[0_0_0_1px_hsl(var(--primary)/0.06)]">
+              <div className="hidden sm:flex items-center gap-2">
+                <span className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/40 px-3 py-1.5 text-xs text-muted-foreground shadow-[0_0_0_1px_hsl(var(--primary)/0.06)]">
                   <span className="h-1.5 w-1.5 rounded-full bg-primary/90" />
-                  Secure
+                  Protected
+                </span>
+
+                <span className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/40 px-3 py-1.5 text-xs text-muted-foreground">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400/80" />
+                  Live
                 </span>
               </div>
             </div>
           </header>
 
-          <main className="mx-auto max-w-7xl px-6 py-8">{children}</main>
+          <main className="mx-auto max-w-7xl px-6 py-8">
+            <div className="space-y-6">{children}</div>
+          </main>
         </div>
       </div>
     </div>
