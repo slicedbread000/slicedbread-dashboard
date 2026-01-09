@@ -6,13 +6,6 @@ import { isOk } from "@/lib/typeguards";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EquityChart } from "@/components/dashboard/EquityChart";
 import { ColumnChart } from "@/components/dashboard/ColumnChart";
-import {
-  formatCurrencyUSD,
-  formatPercentSmart,
-  intentHigherBetter,
-  intentPosNeg,
-  toNumber,
-} from "@/lib/kpiLogic";
 
 type OkShape = {
   meta?: { generatedAt?: string };
@@ -22,10 +15,16 @@ type OkShape = {
   rollingWinRate30d?: { rows?: any[] };
   kpis?: {
     cumulative_pnl_latest?: any;
-    drawdown_latest?: any; // negative is bad
+    drawdown_latest?: any;
     pf30d_latest?: any;
   };
 };
+
+function toNumber(x: any): number {
+  if (typeof x === "number") return x;
+  const n = Number(String(x ?? "").replace(/[^0-9.\-]/g, ""));
+  return Number.isFinite(n) ? n : NaN;
+}
 
 function toDate(x: any): Date | null {
   if (!x) return null;
@@ -45,7 +44,7 @@ function lineSeries(rows: any[], dateKey: string, valKey: string) {
     .map((r) => {
       const d = toDate(r?.[dateKey]);
       const v = toNumber(r?.[valKey]);
-      if (!d || v === null) return null;
+      if (!d || !Number.isFinite(v)) return null;
       return { d, v };
     })
     .filter(Boolean) as { d: Date; v: number }[];
@@ -58,7 +57,7 @@ function barSeries(rows: any[], dateKey: string, valKey: string) {
     .map((r) => {
       const d = toDate(r?.[dateKey]);
       const v = toNumber(r?.[valKey]);
-      if (!d || v === null) return null;
+      if (!d || !Number.isFinite(v)) return null;
       return { d, v };
     })
     .filter(Boolean) as { d: Date; v: number }[];
@@ -66,12 +65,35 @@ function barSeries(rows: any[], dateKey: string, valKey: string) {
   return dedupeSort(pts).map((p) => ({ date: p.date, value: p.v })).slice(-365);
 }
 
-function latestNumber(rows: any[], key: string): number | null {
+function latestAny(rows: any[], key: string): any {
   for (let i = (rows?.length ?? 0) - 1; i >= 0; i--) {
-    const v = toNumber(rows[i]?.[key]);
-    if (v !== null) return v;
+    const v = rows[i]?.[key];
+    if (v !== undefined && v !== null && String(v).trim() !== "") return v;
   }
   return null;
+}
+
+function fmtCurrency(v: any) {
+  const n = toNumber(v);
+  if (!Number.isFinite(n)) return v ?? "—";
+  return new Intl.NumberFormat(undefined, {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(n);
+}
+
+function fmtNumber(v: any) {
+  const n = toNumber(v);
+  if (!Number.isFinite(n)) return v ?? "—";
+  return new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(n);
+}
+
+function fmtPercentFromMaybeFraction(v: any) {
+  const n = toNumber(v);
+  if (!Number.isFinite(n)) return v ?? "—";
+  const pct = Math.abs(n) <= 1 ? n * 100 : n; // 0.19 -> 19
+  return new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(pct) + "%";
 }
 
 export default async function PerformancePage() {
@@ -86,26 +108,23 @@ export default async function PerformancePage() {
     ? `Last refresh: ${data.meta?.generatedAt ?? "Unknown"}`
     : `Data error: ${(data as any)?.error ?? "Unknown error"}`;
 
-  // KPI raw
-  const kpiCumPnl = ok ? data.kpis?.cumulative_pnl_latest ?? null : null;
-  const kpiDrawdown = ok ? data.kpis?.drawdown_latest ?? null : null; // < 0 bad
-  const kpiPf30d = ok ? data.kpis?.pf30d_latest ?? null : null;
-
-  // Win rate can be 0.19 OR 19 depending on source -> smart formatter
-  const kpiWinRate30d = latestNumber(rsRows, "Win Rate (30d)");
+  // KPI raw values
+  const kpiCumPnlRaw = ok ? data.kpis?.cumulative_pnl_latest ?? null : null;
+  const kpiDrawdownRaw = ok ? data.kpis?.drawdown_latest ?? null : null;
+  const kpiPf30dRaw = ok ? data.kpis?.pf30d_latest ?? null : null;
+  const kpiWinRate30dRaw = latestAny(rsRows, "Win Rate (30d)");
 
   // KPI intents
-  const intentCumPnl = intentPosNeg(kpiCumPnl);
-  const intentDrawdown = intentPosNeg(kpiDrawdown); // your rule: anything below 0 is bad
-  const intentPf30d = intentHigherBetter(kpiPf30d, { goodGte: 1.2, badLte: 1.0 });
-  const intentWr30d = intentHigherBetter(kpiWinRate30d, { goodGte: 55, badLte: 45 }); // after smart % display
+  const cumPnlN = toNumber(kpiCumPnlRaw);
+  const drawdownN = toNumber(kpiDrawdownRaw);
+  const pfN = toNumber(kpiPf30dRaw);
+  const wrN = toNumber(kpiWinRate30dRaw);
 
-  // KPI display ($ for these)
-  const displayCumPnl = formatCurrencyUSD(kpiCumPnl, 0);
-  const displayDrawdown = formatCurrencyUSD(kpiDrawdown, 0);
-  const displayPf30d =
-    kpiPf30d === null ? "—" : new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(kpiPf30d);
-  const displayWr30d = kpiWinRate30d === null ? "—" : formatPercentSmart(kpiWinRate30d, 0);
+  const cumPnlIntent = Number.isFinite(cumPnlN) ? (cumPnlN > 0 ? "good" : cumPnlN < 0 ? "bad" : "neutral") : "neutral";
+  const drawdownIntent = Number.isFinite(drawdownN) ? (drawdownN < 0 ? "bad" : drawdownN > 0 ? "good" : "neutral") : "neutral";
+  const pfIntent = Number.isFinite(pfN) ? (pfN >= 1.2 ? "good" : pfN >= 1.0 ? "neutral" : "bad") : "neutral";
+  const wrPct = Number.isFinite(wrN) ? (Math.abs(wrN) <= 1 ? wrN * 100 : wrN) : NaN;
+  const wrIntent = Number.isFinite(wrPct) ? (wrPct >= 55 ? "good" : wrPct >= 45 ? "neutral" : "bad") : "neutral";
 
   // Charts
   const cumulativeNet30d = lineSeries(pfRows, "Date", "cum_net_30d");
@@ -114,13 +133,12 @@ export default async function PerformancePage() {
     .map((r: any) => {
       const d = toDate(r?.date);
       const v = toNumber(r?.value);
-      if (!d || v === null) return null;
+      if (!d || !Number.isFinite(v)) return null;
       return { d, v };
     })
     .filter(Boolean) as { d: Date; v: number }[];
 
   rollingWinRate30d.sort((a, b) => a.d.getTime() - b.d.getTime());
-
   const rollingWRSeries = dedupeSort(rollingWinRate30d)
     .map((p) => ({ date: p.date, equity: p.v }))
     .slice(-365);
@@ -133,10 +151,26 @@ export default async function PerformancePage() {
       <PageHeader title="Performance Summary" subtitle={subtitle} />
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="Cumulative PnL (latest)" value={displayCumPnl} intent={intentCumPnl} />
-        <KpiCard label="Drawdown (latest)" value={displayDrawdown} intent={intentDrawdown} />
-        <KpiCard label="PF (30d)" value={displayPf30d} intent={intentPf30d} />
-        <KpiCard label="Win Rate (30d)" value={displayWr30d} intent={intentWr30d} />
+        <KpiCard
+          label="Cumulative PnL (latest)"
+          value={fmtCurrency(kpiCumPnlRaw)}
+          intent={cumPnlIntent as any}
+        />
+        <KpiCard
+          label="Drawdown (latest)"
+          value={fmtCurrency(kpiDrawdownRaw)}
+          intent={drawdownIntent as any}
+        />
+        <KpiCard
+          label="PF (30d)"
+          value={fmtNumber(kpiPf30dRaw)}
+          intent={pfIntent as any}
+        />
+        <KpiCard
+          label="Win Rate (30d)"
+          value={fmtPercentFromMaybeFraction(kpiWinRate30dRaw)}
+          intent={wrIntent as any}
+        />
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
@@ -146,7 +180,7 @@ export default async function PerformancePage() {
             <span className="text-[11px] text-muted-foreground">365d</span>
           </CardHeader>
           <CardContent>
-            <EquityChart data={cumulativeNet30d} />
+            <EquityChart data={cumulativeNet30d} name="Cumulative Net PnL (30d)" />
           </CardContent>
         </Card>
 
@@ -156,7 +190,7 @@ export default async function PerformancePage() {
             <span className="text-[11px] text-muted-foreground">365d</span>
           </CardHeader>
           <CardContent>
-            <EquityChart data={rollingWRSeries} />
+            <EquityChart data={rollingWRSeries} name="Rolling Win Rate (30d)" />
           </CardContent>
         </Card>
 
@@ -176,7 +210,11 @@ export default async function PerformancePage() {
             <span className="text-[11px] text-muted-foreground">365d</span>
           </CardHeader>
           <CardContent>
-            <EquityChart data={drawdown} />
+            <EquityChart
+              data={drawdown}
+              name="Drawdown"
+              stroke="hsl(0 75% 55% / 0.95)"
+            />
           </CardContent>
         </Card>
       </div>

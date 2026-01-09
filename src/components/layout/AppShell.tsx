@@ -21,7 +21,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      {/* Premium dark background + subtle green glow */}
       <div className="pointer-events-none fixed inset-0 -z-10">
         <div className="absolute inset-0 bg-[radial-gradient(1100px_800px_at_18%_10%,hsl(var(--primary)/0.18),transparent_55%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(900px_700px_at_82%_20%,hsl(var(--primary)/0.10),transparent_55%)]" />
@@ -29,14 +28,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </div>
 
       <div className="flex">
-        {/* Sidebar */}
-        <aside className="relative hidden md:flex md:w-72 md:flex-col border-r border-border/70 bg-card/35 backdrop-blur">
-          {/* Restored: subtle edge glow / vertical design beside sidebar */}
-          <div className="pointer-events-none absolute right-0 top-0 h-full w-[10px]">
-            <div className="absolute inset-0 bg-[linear-gradient(to_right,transparent,hsl(var(--primary)/0.18),transparent)] opacity-70" />
-            <div className="absolute inset-0 bg-[radial-gradient(10px_600px_at_100%_20%,hsl(var(--primary)/0.28),transparent_70%)]" />
-          </div>
-
+        <aside className="hidden md:flex md:w-72 md:flex-col border-r border-border/70 bg-card/35 backdrop-blur">
           <div className="px-6 py-6">
             <div className="flex items-center gap-2">
               <div className="h-2 w-2 rounded-full bg-primary shadow-[0_0_0_4px_hsl(var(--primary)/0.16)]" />
@@ -50,6 +42,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <nav className="px-3 py-3 text-sm space-y-1">
             {nav.map((item) => {
               const active = isActive(item.href);
+
               return (
                 <Link
                   key={item.href}
@@ -68,9 +61,26 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       active ? "bg-primary/90" : "bg-primary/0 group-hover:bg-primary/40"
                     )}
                   />
-                  <span className={cx("font-medium", active ? "text-foreground" : "text-foreground/90")}>
+
+                  {/* Left “marker” (restored) */}
+                  <span
+                    className={cx(
+                      "mr-2 inline-flex h-5 w-5 items-center justify-center rounded-md border text-[11px] transition",
+                      active
+                        ? "border-primary/40 bg-primary/10 text-primary"
+                        : "border-border/60 bg-card/30 text-muted-foreground group-hover:border-primary/30 group-hover:text-primary/90"
+                    )}
+                    aria-hidden="true"
+                    title={item.label}
+                  >
+                    •
+                  </span>
+
+                  <span className={cx("font-medium flex-1", active ? "text-foreground" : "text-foreground/90")}>
                     {item.label}
                   </span>
+
+                  {/* Right dot */}
                   <span
                     className={cx(
                       "h-1.5 w-1.5 rounded-full transition",
@@ -94,9 +104,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </aside>
 
-        {/* Main */}
         <div className="flex-1">
-          {/* Topbar */}
           <header className="border-b border-border/70 bg-card/25 backdrop-blur">
             <div className="mx-auto max-w-7xl px-6 py-4 flex items-center justify-between">
               <div>

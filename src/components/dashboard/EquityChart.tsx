@@ -12,6 +12,12 @@ import {
 
 type Point = { date: string; equity: number };
 
+type Props = {
+  data: Point[];
+  name?: string; // tooltip label
+  stroke?: string; // line color
+};
+
 function num(x: any): number | null {
   const n = typeof x === "number" ? x : Number(String(x ?? "").replace(/[^0-9.\-]/g, ""));
   return Number.isFinite(n) ? n : null;
@@ -37,10 +43,7 @@ function TooltipRow({
   return (
     <div className="flex items-center justify-between gap-6 text-sm">
       <div className="flex items-center gap-2">
-        <span
-          className="inline-block h-2.5 w-2.5 rounded-full"
-          style={{ background: color }}
-        />
+        <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: color }} />
         <span className="text-muted-foreground">{label}</span>
       </div>
       <span style={{ color }} className="font-medium tabular-nums">
@@ -65,12 +68,14 @@ function TooltipBox({ active, payload, label }: any) {
   );
 }
 
-export function EquityChart({ data }: { data: Point[] }) {
+export function EquityChart({
+  data,
+  name = "Value",
+  stroke = "hsl(var(--primary) / 0.95)",
+}: Props) {
   if (!data || data.length === 0) {
     return <div className="text-sm text-muted-foreground">No data.</div>;
   }
-
-  const stroke = "hsl(var(--primary) / 0.95)";
 
   return (
     <div className="w-full">
@@ -84,7 +89,7 @@ export function EquityChart({ data }: { data: Point[] }) {
             <Line
               type="monotone"
               dataKey="equity"
-              name="Value"
+              name={name}
               dot={false}
               strokeWidth={2.4}
               stroke={stroke}
