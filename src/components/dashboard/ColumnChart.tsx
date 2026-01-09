@@ -8,80 +8,73 @@ import {
   Tooltip,
   ResponsiveContainer,
   CartesianGrid,
-  Cell,
 } from "recharts";
 
-function hsl(varName: string, alpha = 1) {
-  return `hsl(var(${varName}) / ${alpha})`;
+type Point = { date: string; value: number };
+
+type Props = {
+  data: Point[];
+  mode?: "default" | "profitLoss" | "lossOnly";
+};
+
+function num(x: any): number | null {
+  const n = typeof x === "number" ? x : Number(String(x ?? "").replace(/[^0-9.\-]/g, ""));
+  return Number.isFinite(n) ? n : null;
 }
 
-export function ColumnChart({
-  data,
-  mode = "single",
-}: {
-  data: { date: string; value: number }[];
-  mode?: "single" | "profitLoss" | "lossOnly";
-}) {
+function formatNumber(v: any) {
+  const n = num(v);
+  if (n === null) return "";
+  return new Intl.NumberFormat(undefined, {
+    maximumFractionDigits: Math.abs(n) < 1 ? 4 : 2,
+  }).format(n);
+}
+
+function TooltipBox({ active, payload, label }: any) {
+  if (!active || !payload || payload.length === 0) return null;
+  const p = payload[0];
+  const color = p.color;
+
+  return (
+    <div className="rounded-xl border bg-popover/95 p-3 shadow-sm backdrop-blur text-popover-foreground">
+      <div className="mb-2 text-xs text-muted-foreground">{label}</div>
+      <div className="flex items-center justify-between gap-6 text-sm">
+        <span className="text-muted-foreground">{p.name ?? "Value"}</span>
+        <span style={{ color }} className="font-medium tabular-nums">
+          {formatNumber(p.value)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+export function ColumnChart({ data, mode = "default" }: Props) {
   if (!data || data.length === 0) {
     return <div className="text-sm text-muted-foreground">No data.</div>;
   }
 
-  const posFill = hsl("--primary", 0.70);
-  const posStroke = hsl("--primary", 0.95);
+  const green = "hsl(var(--primary) / 0.95)";
+  const red = "hsl(0 70% 55% / 0.90)";
 
-  const negFill = "hsl(0 70% 35% / 0.70)";     // dark red
-  const negStroke = "hsl(0 70% 55% / 0.85)";  // readable red
-
-  const lossFill = "hsl(0 70% 35% / 0.75)";
-  const lossStroke = "hsl(0 70% 55% / 0.85)";
+  const shaped = data.map((d) => ({
+    ...d,
+    fill:
+      mode === "lossOnly" ? red : mode === "profitLoss" ? (d.value >= 0 ? green : red) : green,
+  }));
 
   return (
     <div className="w-full">
-      <div className="w-full aspect-[16/6] min-h-[260px] rounded-xl border border-border/70 bg-card/30 p-2">
+      <div className="w-full aspect-[16/6] min-h-[240px]">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 8, right: 12, left: 8, bottom: 6 }}>
-            <CartesianGrid stroke={hsl("--border", 0.35)} strokeDasharray="3 6" />
-            <XAxis
-              dataKey="date"
-              tick={{ fontSize: 12, fill: hsl("--muted-foreground", 0.95) }}
-              axisLine={{ stroke: hsl("--border", 0.55) }}
-              tickLine={{ stroke: hsl("--border", 0.55) }}
-              minTickGap={26}
-            />
-            <YAxis
-              tick={{ fontSize: 12, fill: hsl("--muted-foreground", 0.95) }}
-              axisLine={{ stroke: hsl("--border", 0.55) }}
-              tickLine={{ stroke: hsl("--border", 0.55) }}
-              width={84}
-            />
-            <Tooltip
-              cursor={{ fill: hsl("--primary", 0.06) }}
-              contentStyle={{
-                background: hsl("--card", 0.98),
-                border: `1px solid ${hsl("--border", 0.85)}`,
-                borderRadius: 12,
-                color: hsl("--foreground", 0.98),
-                boxShadow: `0 12px 28px ${hsl("--background", 0.45)}`,
-              }}
-              labelStyle={{ color: hsl("--muted-foreground", 0.95) }}
-              itemStyle={{ color: hsl("--foreground", 0.98) }}
-            />
-
-            <Bar dataKey="value" radius={[6, 6, 2, 2]}>
-              {data.map((d, i) => {
-                const v = Number(d.value);
-                const isNeg = Number.isFinite(v) && v < 0;
-
-                if (mode === "lossOnly") {
-                  return <Cell key={i} fill={lossFill} stroke={lossStroke} />;
-                }
-
-                if (mode === "profitLoss") {
-                  return <Cell key={i} fill={isNeg ? negFill : posFill} stroke={isNeg ? negStroke : posStroke} />;
-                }
-
-                return <Cell key={i} fill={posFill} stroke={posStroke} />;
-              })}
+          <BarChart data={shaped}>
+            <CartesianGrid strokeDasharray="3 3" opacity={0.18} />
+            <XAxis dataKey="date" tick={{ fontSize: 12 }} minTickGap={24} />
+            <YAxis tick={{ fontSize: 12 }} width={80} tickFormatter={formatNumber} />
+            <Tooltip content={<TooltipBox />} />
+            <Bar dataKey="value" name="Value" radius={[6, 6, 2, 2]} fill={green}>
+              {shaped.map((entry, idx) => (
+                <cell key={`cell-${idx}`} fill={entry.fill} />
+              ))}
             </Bar>
           </BarChart>
         </ResponsiveContainer>

@@ -12,8 +12,35 @@ import {
 
 type Point = { date: string; equity: number };
 
-function hsl(varName: string, alpha = 1) {
-  return `hsl(var(${varName}) / ${alpha})`;
+function num(x: any): number | null {
+  const n = typeof x === "number" ? x : Number(String(x ?? "").replace(/[^0-9.\-]/g, ""));
+  return Number.isFinite(n) ? n : null;
+}
+
+function formatNumber(v: any) {
+  const n = num(v);
+  if (n === null) return "";
+  return new Intl.NumberFormat(undefined, {
+    maximumFractionDigits: Math.abs(n) < 1 ? 4 : 2,
+  }).format(n);
+}
+
+function TooltipBox({ active, payload, label }: any) {
+  if (!active || !payload || payload.length === 0) return null;
+  const p = payload[0];
+  const color = p.color;
+
+  return (
+    <div className="rounded-xl border bg-popover/95 p-3 shadow-sm backdrop-blur text-popover-foreground">
+      <div className="mb-2 text-xs text-muted-foreground">{label}</div>
+      <div className="flex items-center justify-between gap-6 text-sm">
+        <span className="text-muted-foreground">{p.name ?? "Value"}</span>
+        <span style={{ color }} className="font-medium tabular-nums">
+          {formatNumber(p.value)}
+        </span>
+      </div>
+    </div>
+  );
 }
 
 export function EquityChart({ data }: { data: Point[] }) {
@@ -23,38 +50,20 @@ export function EquityChart({ data }: { data: Point[] }) {
 
   return (
     <div className="w-full">
-      <div className="w-full aspect-[16/6] min-h-[260px] rounded-xl border border-border/70 bg-card/30 p-2">
+      <div className="w-full aspect-[16/6] min-h-[240px]">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: 8, right: 12, left: 8, bottom: 6 }}>
-            <CartesianGrid stroke={hsl("--border", 0.35)} strokeDasharray="3 6" />
-            <XAxis
-              dataKey="date"
-              tick={{ fontSize: 12, fill: hsl("--muted-foreground", 0.9) }}
-              axisLine={{ stroke: hsl("--border", 0.5) }}
-              tickLine={{ stroke: hsl("--border", 0.5) }}
-              minTickGap={26}
-            />
-            <YAxis
-              tick={{ fontSize: 12, fill: hsl("--muted-foreground", 0.9) }}
-              axisLine={{ stroke: hsl("--border", 0.5) }}
-              tickLine={{ stroke: hsl("--border", 0.5) }}
-              width={84}
-            />
-            <Tooltip
-              contentStyle={{
-                background: hsl("--card", 0.9),
-                border: `1px solid ${hsl("--border", 0.7)}`,
-                borderRadius: 12,
-                color: hsl("--foreground", 0.95),
-              }}
-              labelStyle={{ color: hsl("--muted-foreground", 0.95) }}
-            />
+          <LineChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" opacity={0.18} />
+            <XAxis dataKey="date" tick={{ fontSize: 12 }} minTickGap={24} />
+            <YAxis tick={{ fontSize: 12 }} width={80} tickFormatter={formatNumber} />
+            <Tooltip content={<TooltipBox />} />
             <Line
-              type="linear"
+              type="monotone"
               dataKey="equity"
+              name="Value"
               dot={false}
-              stroke={hsl("--primary", 0.95)}
-              strokeWidth={2.25}
+              strokeWidth={2.4}
+              stroke="hsl(var(--primary) / 0.95)"
             />
           </LineChart>
         </ResponsiveContainer>

@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MultiLineChart } from "@/components/dashboard/MultiLineChart";
 import { ColumnChart } from "@/components/dashboard/ColumnChart";
 import { ScatterPlot } from "@/components/dashboard/ScatterPlot";
-import { EquityChart } from "@/components/dashboard/EquityChart";
 
 type OkShape = {
   meta?: { generatedAt?: string };
@@ -45,7 +44,7 @@ function lineSeries(rows: any[], dateKey: string, valKey: string) {
     .filter(Boolean) as { d: Date; v: number }[];
 
   return dedupeSort(pts)
-    .map((p) => ({ date: p.date, equity: p.v }))
+    .map((p) => ({ date: p.date, v: p.v }))
     .slice(-365);
 }
 
@@ -82,7 +81,7 @@ export default async function RiskPage() {
   const drawdownPct = latestString(rsRows, "drawdown_pct");
   const peakEquity = ok ? data.kpis?.peak_equity_latest ?? null : null;
 
-  // Charts (keep)
+  // Series
   const riskPct = lineSeries(rsRows, "date", "risk_pct");
   const recovery = lineSeries(rsRows, "date", "recovery_pct");
   const lossStreak = barSeries(rsRows, "date", "loss_streak");
@@ -90,11 +89,11 @@ export default async function RiskPage() {
   // Equity curve with risk cut zones
   const zonePts = (rsRows || [])
     .map((r) => {
-      const d = toDate(r["date"]);
-      const equity = toNumber(r["equity_usd"]);
-      const b3 = toNumber(r["band_-3%"]);
-      const b45 = toNumber(r["band_-4.5%"]);
-      const b525 = toNumber(r["band_-5.25%"]);
+      const d = toDate(r?.["date"]);
+      const equity = toNumber(r?.["equity_usd"]);
+      const b3 = toNumber(r?.["band_-3%"]);
+      const b45 = toNumber(r?.["band_-4.5%"]);
+      const b525 = toNumber(r?.["band_-5.25%"]);
       if (!d || !Number.isFinite(equity)) return null;
       return { d, equity, b3, b45, b525 };
     })
@@ -205,6 +204,7 @@ export default async function RiskPage() {
           </Card>
         </div>
 
+        {/* Equity + bands */}
         <Card className="rounded-2xl">
           <CardHeader>
             <CardTitle className="text-sm font-semibold">
@@ -217,47 +217,33 @@ export default async function RiskPage() {
               curve="linear"
               yTight
               lines={[
-                {
-                  key: "equity_usd",
-                  label: "Equity",
-                  stroke: "hsl(var(--primary) / 0.95)",
-                  strokeWidth: 2.4,
-                },
-                {
-                  key: "band_m3",
-                  label: "Band -3%",
-                  stroke: "hsl(var(--muted-foreground) / 0.70)",
-                  strokeWidth: 1.4,
-                  strokeDasharray: "6 4",
-                },
-                {
-                  key: "band_m45",
-                  label: "Band -4.5%",
-                  stroke: "hsl(var(--muted-foreground) / 0.60)",
-                  strokeWidth: 1.4,
-                  strokeDasharray: "6 4",
-                },
-                {
-                  key: "band_m525",
-                  label: "Band -5.25%",
-                  stroke: "hsl(var(--muted-foreground) / 0.55)",
-                  strokeWidth: 1.4,
-                  strokeDasharray: "6 4",
-                },
+                { key: "equity_usd", label: "Equity", stroke: "hsl(var(--primary) / 0.95)", strokeWidth: 2.6 },
+                { key: "band_m3", label: "Band -3%", stroke: "hsl(45 90% 55% / 0.85)", strokeWidth: 1.7, strokeDasharray: "6 4" },    // amber
+                { key: "band_m45", label: "Band -4.5%", stroke: "hsl(210 90% 60% / 0.80)", strokeWidth: 1.7, strokeDasharray: "6 4" }, // blue
+                { key: "band_m525", label: "Band -5.25%", stroke: "hsl(0 75% 55% / 0.80)", strokeWidth: 1.7, strokeDasharray: "6 4" },  // red
               ]}
             />
           </CardContent>
         </Card>
 
+        {/* Risk % over time */}
         <Card className="rounded-2xl">
           <CardHeader>
             <CardTitle className="text-sm font-semibold">Risk % Over Time</CardTitle>
           </CardHeader>
           <CardContent>
-            <EquityChart data={riskPct} />
+            <MultiLineChart
+              data={riskPct.map((p) => ({ date: p.date, risk_pct: p.v }))}
+              curve="linear"
+              yTight
+              lines={[
+                { key: "risk_pct", label: "Risk %", stroke: "hsl(var(--primary) / 0.95)", strokeWidth: 2.4 },
+              ]}
+            />
           </CardContent>
         </Card>
 
+        {/* Scatter */}
         <Card className="rounded-2xl">
           <CardHeader>
             <CardTitle className="text-sm font-semibold">Expectancy vs Risk % (Scatter)</CardTitle>
@@ -273,6 +259,7 @@ export default async function RiskPage() {
           </CardContent>
         </Card>
 
+        {/* Edge vs Exposure */}
         <Card className="rounded-2xl">
           <CardHeader>
             <CardTitle className="text-sm font-semibold">Edge vs Exposure (Rolling)</CardTitle>
@@ -283,22 +270,31 @@ export default async function RiskPage() {
               curve="linear"
               yTight
               lines={[
-                { key: "edge", label: "Edge", stroke: "hsl(var(--primary) / 0.95)", strokeWidth: 2.4 },
-                { key: "exposure", label: "Exposure", stroke: "hsl(var(--chart-2) / 0.95)", strokeWidth: 2.2 },
+                { key: "edge", label: "Edge", stroke: "hsl(var(--primary) / 0.95)", strokeWidth: 2.6 },           // green
+                { key: "exposure", label: "Exposure", stroke: "hsl(200 90% 60% / 0.90)", strokeWidth: 2.4 },     // cyan/blue
               ]}
             />
           </CardContent>
         </Card>
 
+        {/* Recovery */}
         <Card className="rounded-2xl">
           <CardHeader>
             <CardTitle className="text-sm font-semibold">Recovery Progress</CardTitle>
           </CardHeader>
           <CardContent>
-            <EquityChart data={recovery} />
+            <MultiLineChart
+              data={recovery.map((p) => ({ date: p.date, recovery_pct: p.v }))}
+              curve="linear"
+              yTight
+              lines={[
+                { key: "recovery_pct", label: "Recovery %", stroke: "hsl(var(--primary) / 0.95)", strokeWidth: 2.4 },
+              ]}
+            />
           </CardContent>
         </Card>
 
+        {/* Losses */}
         <Card className="rounded-2xl">
           <CardHeader>
             <CardTitle className="text-sm font-semibold">Consecutive Losses</CardTitle>

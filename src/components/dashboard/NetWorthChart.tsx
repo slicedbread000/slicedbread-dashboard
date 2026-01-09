@@ -12,21 +12,54 @@ import {
 
 type Point = { date: string; networth: number };
 
-function hsl(varName: string, alpha = 1) {
-  return `hsl(var(${varName}) / ${alpha})`;
+function num(x: any): number | null {
+  const n = typeof x === "number" ? x : Number(String(x ?? "").replace(/[^0-9.\-]/g, ""));
+  return Number.isFinite(n) ? n : null;
 }
 
-function domainFromData(values: number[], pad = 0.06): [number, number] {
-  const v = values.filter((x) => Number.isFinite(x));
-  if (v.length === 0) return [0, 1];
-  const min = Math.min(...v);
-  const max = Math.max(...v);
+function formatNumber(v: any) {
+  const n = num(v);
+  if (n === null) return "";
+  return new Intl.NumberFormat(undefined, {
+    maximumFractionDigits: Math.abs(n) < 1 ? 4 : 2,
+  }).format(n);
+}
+
+function domainTight(data: Point[]) {
+  let min = Infinity;
+  let max = -Infinity;
+  for (const p of data || []) {
+    const v = num(p.networth);
+    if (v === null) continue;
+    min = Math.min(min, v);
+    max = Math.max(max, v);
+  }
+  if (!Number.isFinite(min) || !Number.isFinite(max)) return undefined;
   if (min === max) {
-    const bump = Math.abs(min || 1) * 0.1;
-    return [min - bump, max + bump];
+    const pad = Math.max(1, Math.abs(min) * 0.02);
+    return [min - pad, max + pad] as [number, number];
   }
   const range = max - min;
-  return [min - range * pad, max + range * pad];
+  const pad = range * 0.12;
+  return [min - pad, max + pad] as [number, number];
+}
+
+function TooltipBox({ active, payload, label }: any) {
+  if (!active || !payload || payload.length === 0) return null;
+  const p = payload[0];
+  const color = p.color;
+
+  return (
+    <div className="rounded-xl border bg-popover/95 p-3 shadow-sm backdrop-blur text-popover-foreground">
+      <div className="mb-2 text-xs text-muted-foreground">{label}</div>
+      <div className="flex items-center justify-between gap-6 text-sm">
+        <span className="text-muted-foreground">Net Worth</span>
+        <span style={{ color }} className="font-medium tabular-nums">
+          {formatNumber(p.value)}
+        </span>
+      </div>
+    </div>
+  );
 }
 
 export function NetWorthChart({ data }: { data: Point[] }) {
@@ -34,47 +67,23 @@ export function NetWorthChart({ data }: { data: Point[] }) {
     return <div className="text-sm text-muted-foreground">No net worth data.</div>;
   }
 
-  const ys = data.map((d) => Number(d.networth)).filter(Number.isFinite);
-  const domain = domainFromData(ys, 0.08);
+  const dom = domainTight(data);
 
   return (
     <div className="w-full">
-      <div className="w-full aspect-[16/6] min-h-[260px] rounded-xl border border-border/70 bg-card/30 p-2">
+      <div className="w-full aspect-[16/6] min-h-[240px]">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: 8, right: 12, left: 8, bottom: 6 }}>
-            <CartesianGrid stroke={hsl("--border", 0.35)} strokeDasharray="3 6" />
-            <XAxis
-              dataKey="date"
-              tick={{ fontSize: 12, fill: hsl("--muted-foreground", 0.95) }}
-              axisLine={{ stroke: hsl("--border", 0.55) }}
-              tickLine={{ stroke: hsl("--border", 0.55) }}
-              minTickGap={26}
-            />
-            <YAxis
-              tick={{ fontSize: 12, fill: hsl("--muted-foreground", 0.95) }}
-              axisLine={{ stroke: hsl("--border", 0.55) }}
-              tickLine={{ stroke: hsl("--border", 0.55) }}
-              width={84}
-              domain={domain as any}
-            />
-            <Tooltip
-              cursor={{ stroke: hsl("--primary", 0.25), strokeWidth: 1 }}
-              contentStyle={{
-                background: hsl("--card", 0.98),
-                border: `1px solid ${hsl("--border", 0.85)}`,
-                borderRadius: 12,
-                color: hsl("--foreground", 0.98),
-                boxShadow: `0 12px 28px ${hsl("--background", 0.45)}`,
-              }}
-              labelStyle={{ color: hsl("--muted-foreground", 0.95) }}
-              itemStyle={{ color: hsl("--foreground", 0.98) }}
-            />
+          <LineChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" opacity={0.18} />
+            <XAxis dataKey="date" tick={{ fontSize: 12 }} minTickGap={24} />
+            <YAxis tick={{ fontSize: 12 }} width={80} tickFormatter={formatNumber} domain={dom as any} />
+            <Tooltip content={<TooltipBox />} />
             <Line
-              type="linear"
+              type="monotone"
               dataKey="networth"
               dot={false}
-              stroke={hsl("--primary", 0.95)}
-              strokeWidth={2.25}
+              strokeWidth={2.4}
+              stroke="hsl(var(--primary) / 0.95)"
             />
           </LineChart>
         </ResponsiveContainer>
