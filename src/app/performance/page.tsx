@@ -182,7 +182,7 @@ export default async function PerformancePage() {
             <CardTitle className="text-sm font-semibold">Avg Net per Trade (30d)</CardTitle>
           </CardHeader>
           <CardContent>
-            <ColumnChart data={avgNetTrade30d} mode="profitLoss" />
+            <ColumnChart data={avgNetTrade30d} mode="posNeg" />
           </CardContent>
         </Card>
 
