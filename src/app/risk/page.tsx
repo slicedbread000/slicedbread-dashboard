@@ -1,10 +1,19 @@
 import { AppShell } from "@/components/layout/AppShell";
 import { fetchDashboardData } from "@/lib/dashboardApi";
+import { isOk } from "@/lib/typeguards";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { EquityChart } from "@/components/dashboard/EquityChart";
 import { MultiLineChart } from "@/components/dashboard/MultiLineChart";
 import { ColumnChart } from "@/components/dashboard/ColumnChart";
 import { ScatterPlot } from "@/components/dashboard/ScatterPlot";
+import { EquityChart } from "@/components/dashboard/EquityChart";
+
+type OkShape = {
+  meta?: { generatedAt?: string };
+  riskState?: { rows?: any[] };
+  kpis?: { peak_equity_latest?: any };
+  edgeExposureRolling?: { edge?: any[]; exposure?: any[] };
+  expectancyRiskScatter?: { rows?: any[] };
+};
 
 function toNumber(x: any): number {
   if (typeof x === "number") return x;
@@ -31,7 +40,9 @@ function lineSeries(rows: any[], dateKey: string, valKey: string) {
       return { d, v };
     })
     .filter(Boolean) as { d: Date; v: number }[];
-  return dedupeSort(pts).map((p) => ({ date: p.date, equity: p.v })).slice(-365);
+  return dedupeSort(pts)
+    .map((p) => ({ date: p.date, equity: p.v }))
+    .slice(-365);
 }
 function barSeries(rows: any[], dateKey: string, valKey: string) {
   const pts = (rows || [])
@@ -42,7 +53,9 @@ function barSeries(rows: any[], dateKey: string, valKey: string) {
       return { d, v };
     })
     .filter(Boolean) as { d: Date; v: number }[];
-  return dedupeSort(pts).map((p) => ({ date: p.date, value: p.v })).slice(-365);
+  return dedupeSort(pts)
+    .map((p) => ({ date: p.date, value: p.v }))
+    .slice(-365);
 }
 function latestString(rows: any[], key: string): string | null {
   for (let i = (rows?.length ?? 0) - 1; i >= 0; i--) {
@@ -54,18 +67,20 @@ function latestString(rows: any[], key: string): string | null {
 
 export default async function RiskPage() {
   const data = await fetchDashboardData();
-  const rsRows = (data?.riskState?.rows ?? []) as any[];
+  const ok = isOk<OkShape>(data);
 
-  // KPIs (already perfect)
+  const rsRows = (ok ? data.riskState?.rows ?? [] : []) as any[];
+
+  // KPIs
   const drawdownPct = latestString(rsRows, "drawdown_pct");
-  const peakEquity = data?.kpis?.peak_equity_latest ?? null;
+  const peakEquity = ok ? data.kpis?.peak_equity_latest ?? null : null;
 
-  // Perfect charts (keep)
+  // Charts (keep)
   const riskPct = lineSeries(rsRows, "date", "risk_pct");
   const recovery = lineSeries(rsRows, "date", "recovery_pct");
   const lossStreak = barSeries(rsRows, "date", "loss_streak");
 
-  // Equity curve with risk cut zones (values correct; improve styling)
+  // Equity curve with risk cut zones
   const zonePts = (rsRows || [])
     .map((r) => {
       const d = toDate(r["date"]);
@@ -100,9 +115,9 @@ export default async function RiskPage() {
     }))
     .slice(-365);
 
-  // Edge vs Exposure (Rolling) — accurate; make it non-smooth
-  const edgeRows = (data?.edgeExposureRolling?.edge ?? []) as any[];
-  const exposureRows = (data?.edgeExposureRolling?.exposure ?? []) as any[];
+  // Edge vs Exposure (Rolling)
+  const edgeRows = (ok ? data.edgeExposureRolling?.edge ?? [] : []) as any[];
+  const exposureRows = (ok ? data.edgeExposureRolling?.exposure ?? [] : []) as any[];
 
   const edgeMap = new Map<string, number>();
   for (const r of edgeRows) {
@@ -130,8 +145,8 @@ export default async function RiskPage() {
     .filter((p) => p.edge !== null && p.exposure !== null)
     .slice(-365);
 
-  // Expectancy vs Risk % — SCATTER from Equity_Curve X:Y
-  const scatterRaw = (data?.expectancyRiskScatter?.rows ?? []) as any[];
+  // Expectancy vs Risk % — scatter
+  const scatterRaw = (ok ? data.expectancyRiskScatter?.rows ?? [] : []) as any[];
   const scatterData = scatterRaw
     .map((r) => {
       const x = toNumber(r?.expectancy);
@@ -141,14 +156,16 @@ export default async function RiskPage() {
     })
     .filter(Boolean) as any[];
 
+  const subtitle = ok
+    ? `Last refresh: ${data.meta?.generatedAt ?? "Unknown"}`
+    : `Data error: ${(data as any)?.error ?? "Unknown error"}`;
+
   return (
     <AppShell>
       <div className="space-y-6">
         <div>
           <div className="text-xl font-semibold tracking-tight">Risk State</div>
-          <div className="text-sm text-muted-foreground">
-            Last refresh: {data?.meta?.generatedAt ?? "Unknown"}
-          </div>
+          <div className="text-sm text-muted-foreground">{subtitle}</div>
         </div>
 
         {/* KPIs */}
