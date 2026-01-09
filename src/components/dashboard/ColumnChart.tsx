@@ -25,19 +25,22 @@ function toNumber(x: any): number {
 }
 
 function fmtNumber(v: number) {
-  // keep it readable without forcing currency
   const abs = Math.abs(v);
   if (abs >= 1000) return v.toLocaleString(undefined, { maximumFractionDigits: 2 });
   return v.toLocaleString(undefined, { maximumFractionDigits: 4 });
 }
 
-function CustomTooltip({ active, label, payload }: any) {
+function CustomTooltip({
+  active,
+  label,
+  payload,
+  valueLabel,
+}: any) {
   if (!active || !payload || payload.length === 0) return null;
 
   const p0 = payload[0];
   const value = typeof p0?.value === "number" ? p0.value : Number(p0?.value);
-  const barColor =
-    p0?.payload?.fill || p0?.fill || p0?.color || "hsl(var(--foreground))";
+  const barColor = p0?.payload?.fill || p0?.fill || p0?.color || "hsl(var(--foreground))";
 
   return (
     <div
@@ -52,8 +55,11 @@ function CustomTooltip({ active, label, payload }: any) {
       {/* X axis label stays normal */}
       <div style={{ fontSize: 12, opacity: 0.9, marginBottom: 6 }}>{label}</div>
 
-      {/* Y value matches the bar color */}
-      <div style={{ fontSize: 14, fontWeight: 600, color: barColor }}>
+      {/* Descriptor + value colored to match bar */}
+      <div style={{ fontSize: 12, opacity: 0.85, marginBottom: 2 }}>
+        {valueLabel ?? "Value"}
+      </div>
+      <div style={{ fontSize: 14, fontWeight: 700, color: barColor }}>
         {Number.isFinite(value) ? fmtNumber(value) : String(p0?.value ?? "")}
       </div>
     </div>
@@ -63,9 +69,11 @@ function CustomTooltip({ active, label, payload }: any) {
 export function ColumnChart({
   data,
   mode = "default",
+  valueLabel,
 }: {
   data: Point[];
   mode?: Mode;
+  valueLabel?: string;
 }) {
   const rows = (data || [])
     .map((d) => ({
@@ -97,8 +105,8 @@ export function ColumnChart({
             <CartesianGrid strokeDasharray="3 3" opacity={0.25} />
             <XAxis dataKey="date" tick={{ fontSize: 12 }} minTickGap={24} />
             <YAxis tick={{ fontSize: 12 }} width={80} />
-            <Tooltip content={<CustomTooltip />} />
-            <Bar dataKey="value" name="Value" radius={[6, 6, 2, 2]}>
+            <Tooltip content={<CustomTooltip valueLabel={valueLabel} />} />
+            <Bar dataKey="value" name={valueLabel ?? "Value"} radius={[6, 6, 2, 2]}>
               {shaped.map((entry, idx) => (
                 <Cell key={`cell-${idx}`} fill={entry.fill} />
               ))}
