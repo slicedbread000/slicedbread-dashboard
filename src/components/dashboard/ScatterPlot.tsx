@@ -8,24 +8,14 @@ import {
   YAxis,
   Tooltip,
   CartesianGrid,
-  Legend,
 } from "recharts";
 
 type Props = {
   data: any[];
   xKey: string;
   yKey: string;
-
-  // keep for optional future axis titles (you currently want them OFF)
   xLabel?: string;
   yLabel?: string;
-
-  // tooltip labels (legend-style)
-  xTooltipLabel?: string;
-  yTooltipLabel?: string;
-
-  // legend label for the series
-  seriesLabel?: string;
 };
 
 function num(x: any): number | null {
@@ -53,65 +43,41 @@ function TooltipRow({
   return (
     <div className="flex items-center justify-between gap-6 text-sm">
       <div className="flex items-center gap-2">
-        <span
-          className="inline-block h-2.5 w-2.5 rounded-full"
-          style={{ background: color }}
-        />
+        <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: color }} />
         <span className="text-muted-foreground">{label}</span>
       </div>
-      <span className="font-medium tabular-nums" style={{ color }}>
+      <span style={{ color }} className="font-medium tabular-nums">
         {value}
       </span>
     </div>
   );
 }
 
-function TooltipBox({
-  active,
-  payload,
-  xKey,
-  yKey,
-  xLabel,
-  yLabel,
-}: any) {
+function TooltipBox({ active, payload }: any) {
   if (!active || !payload || payload.length === 0) return null;
 
   const p = payload[0];
   const color = p.color || "hsl(var(--primary) / 0.95)";
-  const point = p.payload || {};
 
-  const x = point?.[xKey] ?? point?.x;
-  const y = point?.[yKey] ?? point?.y;
+  const x = p.payload?.[p.dataKey] ?? p.payload?.expectancy ?? p.payload?.x;
+  const y = p.payload?.risk_pct ?? p.payload?.y;
 
   return (
     <div className="rounded-xl border bg-popover/95 p-3 shadow-sm backdrop-blur text-popover-foreground">
-      <TooltipRow color={color} label={xLabel} value={formatNumber(x)} />
-      <div className="h-2" />
-      <TooltipRow color={color} label={yLabel} value={formatNumber(y)} />
+      <div className="space-y-2">
+        <TooltipRow color={color} label="Expectancy" value={formatNumber(x)} />
+        <TooltipRow color={color} label="Risk %" value={formatNumber(y)} />
+      </div>
     </div>
   );
 }
 
-export function ScatterPlot({
-  data,
-  xKey,
-  yKey,
-  xLabel,
-  yLabel,
-  xTooltipLabel,
-  yTooltipLabel,
-  seriesLabel,
-}: Props) {
+export function ScatterPlot({ data, xKey, yKey }: Props) {
   if (!data || data.length === 0) {
     return <div className="text-sm text-muted-foreground">No data.</div>;
   }
 
   const dot = "hsl(var(--primary) / 0.95)";
-
-  const xTip = xTooltipLabel ?? xKey;
-  const yTip = yTooltipLabel ?? yKey;
-
-  const name = seriesLabel ?? "Points";
 
   return (
     <div className="w-full">
@@ -119,63 +85,23 @@ export function ScatterPlot({
         <ResponsiveContainer width="100%" height="100%">
           <ScatterChart>
             <CartesianGrid strokeDasharray="3 3" opacity={0.18} />
-
             <XAxis
               dataKey={xKey}
               type="number"
               tick={{ fontSize: 12 }}
               tickFormatter={formatNumber}
-              // axis titles OFF unless you pass xLabel
-              label={
-                xLabel
-                  ? {
-                      value: xLabel,
-                      position: "insideBottom",
-                      offset: -6,
-                      fill: "hsl(var(--muted-foreground))",
-                    }
-                  : undefined
-              }
+              // No axis title
             />
-
             <YAxis
               dataKey={yKey}
               type="number"
               tick={{ fontSize: 12 }}
               width={80}
               tickFormatter={formatNumber}
-              // axis titles OFF unless you pass yLabel
-              label={
-                yLabel
-                  ? {
-                      value: yLabel,
-                      angle: -90,
-                      position: "insideLeft",
-                      fill: "hsl(var(--muted-foreground))",
-                    }
-                  : undefined
-              }
+              // No axis title
             />
-
-            <Tooltip
-              content={
-                <TooltipBox
-                  xKey={xKey}
-                  yKey={yKey}
-                  xLabel={xTip}
-                  yLabel={yTip}
-                />
-              }
-            />
-
-            <Legend
-              verticalAlign="top"
-              align="left"
-              iconType="circle"
-              wrapperStyle={{ paddingBottom: 8 }}
-            />
-
-            <Scatter name={name} data={data} fill={dot} />
+            <Tooltip content={<TooltipBox />} />
+            <Scatter name="Points" data={data} fill={dot} />
           </ScatterChart>
         </ResponsiveContainer>
       </div>
