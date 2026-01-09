@@ -8,7 +8,7 @@ import { MultiLineChart } from "@/components/dashboard/MultiLineChart";
 import { ColumnChart } from "@/components/dashboard/ColumnChart";
 import { ScatterPlot } from "@/components/dashboard/ScatterPlot";
 import { EquityChart } from "@/components/dashboard/EquityChart";
-import { classifyKpi, formatKpiNumber, toNumber } from "@/lib/kpi";
+import { formatNumber, intentHigherBetter, intentPosNeg, toNumber } from "@/lib/kpiLogic";
 
 type OkShape = {
   meta?: { generatedAt?: string };
@@ -79,32 +79,28 @@ export default async function RiskPage() {
   const drawdownPctRaw = latestString(rsRows, "drawdown_pct");
   const peakEquity = ok ? data.kpis?.peak_equity_latest ?? null : null;
 
-  // drawdown_pct could be "-0.12" or "-12%" etc; handle both
-  const ddPctNum = toNumber(drawdownPctRaw);
+  // drawdown_pct formatting (handles "-0.12" or "-12" or "-12%")
+  const ddNum = toNumber(drawdownPctRaw);
   const drawdownPctDisplay =
-    ddPctNum === null
+    ddNum === null
       ? drawdownPctRaw ?? "—"
-      : // if it looks like a decimal (abs <= 1.5), show percent
-        Math.abs(ddPctNum) <= 1.5
-      ? formatKpiNumber(ddPctNum, { multiply: 100, decimals: 2, suffix: "%" })
-      : formatKpiNumber(ddPctNum, { decimals: 2, suffix: "%" });
+      : Math.abs(ddNum) <= 1.5
+      ? formatNumber(ddNum, { multiply: 100, decimals: 2, suffix: "%" })
+      : formatNumber(ddNum, { decimals: 2, suffix: "%" });
 
   // intents
-  // drawdown%: closer to 0 is better (less negative)
-  const intentDrawdownPct = classifyKpi(ddPctNum, {
-    kind: "higherBetter",
-    goodGte: -2, // better than -2% (or -2 if already percent-ish)
-    badLte: -6,  // worse than -6%
-  });
+  // drawdown%: below 0 is bad (your rule)
+  const intentDrawdownPct = intentPosNeg(ddNum);
 
-  const intentPeakEquity = classifyKpi(peakEquity, { kind: "higherBetter" });
+  // peak equity: higher is better
+  const intentPeakEquity = intentHigherBetter(peakEquity);
 
-  // Charts (keep)
+  // Charts
   const riskPct = lineSeries(rsRows, "date", "risk_pct");
   const recovery = lineSeries(rsRows, "date", "recovery_pct");
   const lossStreak = barSeries(rsRows, "date", "loss_streak");
 
-  // Equity curve with risk cut zones
+  // Equity curve with zones
   const zonePts = (rsRows || [])
     .map((r) => {
       const d = toDate(r["date"]);
@@ -120,7 +116,6 @@ export default async function RiskPage() {
   zonePts.sort((a, b) => a.d.getTime() - b.d.getTime());
 
   const zonesByDay = new Map<string, { equity: number; b3?: number; b45?: number; b525?: number }>();
-
   for (const p of zonePts) {
     const key = p.d.toISOString().slice(0, 10);
     zonesByDay.set(key, {
@@ -141,7 +136,7 @@ export default async function RiskPage() {
     }))
     .slice(-365);
 
-  // Edge vs Exposure (Rolling)
+  // Edge vs Exposure
   const edgeRows = (ok ? data.edgeExposureRolling?.edge ?? [] : []) as any[];
   const exposureRows = (ok ? data.edgeExposureRolling?.exposure ?? [] : []) as any[];
 
@@ -171,7 +166,7 @@ export default async function RiskPage() {
     .filter((p) => p.edge !== null && p.exposure !== null)
     .slice(-365);
 
-  // Expectancy vs Risk % — scatter
+  // Scatter
   const scatterRaw = (ok ? data.expectancyRiskScatter?.rows ?? [] : []) as any[];
   const scatterData = scatterRaw
     .map((r) => {
@@ -189,11 +184,7 @@ export default async function RiskPage() {
       {/* KPI strip */}
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard label="Drawdown %" value={drawdownPctDisplay} intent={intentDrawdownPct} />
-        <KpiCard
-          label="Peak Equity"
-          value={formatKpiNumber(peakEquity, { decimals: 0 })}
-          intent={intentPeakEquity}
-        />
+        <KpiCard label="Peak Equity" value={formatNumber(peakEquity, { decimals: 0 })} intent={intentPeakEquity} />
       </div>
 
       {/* Chart grid */}
@@ -209,33 +200,10 @@ export default async function RiskPage() {
               curve="linear"
               yTight
               lines={[
-                {
-                  key: "equity_usd",
-                  label: "Equity",
-                  stroke: "hsl(var(--primary) / 0.95)",
-                  strokeWidth: 2.4,
-                },
-                {
-                  key: "band_m3",
-                  label: "Band -3%",
-                  stroke: "hsl(150 65% 55% / 0.75)",
-                  strokeWidth: 1.4,
-                  strokeDasharray: "6 4",
-                },
-                {
-                  key: "band_m45",
-                  label: "Band -4.5%",
-                  stroke: "hsl(40 90% 55% / 0.75)",
-                  strokeWidth: 1.4,
-                  strokeDasharray: "6 4",
-                },
-                {
-                  key: "band_m525",
-                  label: "Band -5.25%",
-                  stroke: "hsl(0 75% 55% / 0.75)",
-                  strokeWidth: 1.4,
-                  strokeDasharray: "6 4",
-                },
+                { key: "equity_usd", label: "Equity", stroke: "hsl(var(--primary) / 0.95)", strokeWidth: 2.4 },
+                { key: "band_m3", label: "Band -3%", stroke: "hsl(150 65% 55% / 0.75)", strokeWidth: 1.4, strokeDasharray: "6 4" },
+                { key: "band_m45", label: "Band -4.5%", stroke: "hsl(40 90% 55% / 0.75)", strokeWidth: 1.4, strokeDasharray: "6 4" },
+                { key: "band_m525", label: "Band -5.25%", stroke: "hsl(0 75% 55% / 0.75)", strokeWidth: 1.4, strokeDasharray: "6 4" },
               ]}
             />
           </CardContent>
@@ -272,18 +240,8 @@ export default async function RiskPage() {
               curve="linear"
               yTight
               lines={[
-                {
-                  key: "edge",
-                  label: "Edge",
-                  stroke: "hsl(var(--primary) / 0.95)",
-                  strokeWidth: 2.4,
-                },
-                {
-                  key: "exposure",
-                  label: "Exposure",
-                  stroke: "hsl(var(--chart-2) / 0.95)",
-                  strokeWidth: 2.2,
-                },
+                { key: "edge", label: "Edge", stroke: "hsl(var(--primary) / 0.95)", strokeWidth: 2.4 },
+                { key: "exposure", label: "Exposure", stroke: "hsl(var(--chart-2) / 0.95)", strokeWidth: 2.2 },
               ]}
             />
           </CardContent>

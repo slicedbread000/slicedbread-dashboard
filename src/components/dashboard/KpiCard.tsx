@@ -1,8 +1,7 @@
-// src/components/dashboard/KpiCard.tsx
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { KpiIntent } from "@/lib/kpi";
+import type { KpiIntent } from "@/lib/kpiLogic";
 
 type Props = {
   label: string;

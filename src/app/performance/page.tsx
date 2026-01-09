@@ -6,7 +6,7 @@ import { isOk } from "@/lib/typeguards";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EquityChart } from "@/components/dashboard/EquityChart";
 import { ColumnChart } from "@/components/dashboard/ColumnChart";
-import { classifyKpi, formatKpiNumber, toNumber } from "@/lib/kpi";
+import { formatNumber, intentHigherBetter, intentPosNeg, toNumber } from "@/lib/kpiLogic";
 
 type OkShape = {
   meta?: { generatedAt?: string };
@@ -16,7 +16,7 @@ type OkShape = {
   rollingWinRate30d?: { rows?: any[] };
   kpis?: {
     cumulative_pnl_latest?: any;
-    drawdown_latest?: any; // negative dollars (ex: -1570)
+    drawdown_latest?: any; // negative number is bad
     pf30d_latest?: any;
   };
 };
@@ -80,50 +80,39 @@ export default async function PerformancePage() {
     ? `Last refresh: ${data.meta?.generatedAt ?? "Unknown"}`
     : `Data error: ${(data as any)?.error ?? "Unknown error"}`;
 
-  // KPI raw values
+  // KPI raw
   const kpiCumPnl = ok ? data.kpis?.cumulative_pnl_latest ?? null : null;
-  const kpiDrawdown = ok ? data.kpis?.drawdown_latest ?? null : null; // negative dollars
+  const kpiDrawdown = ok ? data.kpis?.drawdown_latest ?? null : null; // < 0 bad
   const kpiPf30d = ok ? data.kpis?.pf30d_latest ?? null : null;
 
-  // Win Rate (30d) represented as decimal like 0.19
+  // Win rate is decimal like 0.19
   const kpiWinRate30d = latestNumber(rsRows, "Win Rate (30d)");
 
-  // KPI intents (tweak thresholds anytime)
-  const intentCumPnl = classifyKpi(kpiCumPnl, { kind: "posNeg" });
+  // KPI intents
+  const intentCumPnl = intentPosNeg(kpiCumPnl);
 
-  // drawdown is negative dollars: closer to 0 is better
-  const intentDrawdown = classifyKpi(kpiDrawdown, {
-    kind: "higherBetter",
-    goodGte: -500, // drawdown better than -$500 = good
-    badLte: -2000, // worse than -$2000 = bad
-  });
+  // your requirement: anything below 0 is bad
+  const intentDrawdown = intentPosNeg(kpiDrawdown);
 
-  const intentPf30d = classifyKpi(kpiPf30d, {
-    kind: "higherBetter",
-    goodGte: 1.2,
-    badLte: 1.0,
-  });
+  // PF: higher is better (set a sensible neutral band)
+  const intentPf30d = intentHigherBetter(kpiPf30d, { goodGte: 1.2, badLte: 1.0 });
 
-  // win rate decimal (0.19) — treat >0.55 good, <0.45 bad
-  const intentWr30d = classifyKpi(kpiWinRate30d, {
-    kind: "higherBetter",
-    goodGte: 0.55,
-    badLte: 0.45,
-  });
+  // WR: higher is better (still based on decimal)
+  const intentWr30d = intentHigherBetter(kpiWinRate30d, { goodGte: 0.55, badLte: 0.45 });
 
-  // KPI display values
-  const displayCumPnl = formatKpiNumber(kpiCumPnl, { decimals: 2 });
-  const displayDrawdown = formatKpiNumber(kpiDrawdown, { decimals: 0 });
-  const displayPf30d = formatKpiNumber(kpiPf30d, { decimals: 2 });
+  // KPI display
+  const displayCumPnl = formatNumber(kpiCumPnl, { decimals: 2 });
+  const displayDrawdown = formatNumber(kpiDrawdown, { decimals: 0 });
+  const displayPf30d = formatNumber(kpiPf30d, { decimals: 2 });
   const displayWr30d =
     kpiWinRate30d === null
       ? "—"
-      : formatKpiNumber(kpiWinRate30d, { multiply: 100, decimals: 1, suffix: "%" });
+      : formatNumber(kpiWinRate30d, { multiply: 100, decimals: 1, suffix: "%" });
 
   // Charts
   const cumulativeNet30d = lineSeries(pfRows, "Date", "cum_net_30d");
 
-  const rollingWinRate30d = (ok ? (data.rollingWinRate30d?.rows ?? []) : [])
+  const rollingWinRate30d = (ok ? data.rollingWinRate30d?.rows ?? [] : [])
     .map((r: any) => {
       const d = toDate(r?.date);
       const v = toNumber(r?.value);
@@ -147,17 +136,8 @@ export default async function PerformancePage() {
 
       {/* KPI strip */}
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard
-          label="Cumulative PnL (latest)"
-          value={displayCumPnl}
-          intent={intentCumPnl}
-        />
-        <KpiCard
-          label="Drawdown (latest)"
-          value={displayDrawdown}
-          intent={intentDrawdown}
-          hint="Closer to 0 is better"
-        />
+        <KpiCard label="Cumulative PnL (latest)" value={displayCumPnl} intent={intentCumPnl} />
+        <KpiCard label="Drawdown (latest)" value={displayDrawdown} intent={intentDrawdown} />
         <KpiCard label="PF (30d)" value={displayPf30d} intent={intentPf30d} />
         <KpiCard label="Win Rate (30d)" value={displayWr30d} intent={intentWr30d} />
       </div>
