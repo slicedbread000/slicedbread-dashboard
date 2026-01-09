@@ -298,7 +298,7 @@ export default async function RiskPage() {
             <CardTitle className="text-sm font-semibold">Consecutive Losses</CardTitle>
           </CardHeader>
           <CardContent>
-            <ColumnChart data={lossStreak} mode="lossOnly" valueLabel="Consecutive Losses" />
+            <ColumnChart data={lossStreak} mode="lossOnly" />
           </CardContent>
         </Card>
       </div>
