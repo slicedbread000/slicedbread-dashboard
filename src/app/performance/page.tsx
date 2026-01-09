@@ -1,10 +1,11 @@
 import { AppShell } from "@/components/layout/AppShell";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { KpiCard } from "@/components/dashboard/KpiCard";
 import { fetchDashboardData } from "@/lib/dashboardApi";
 import { isOk } from "@/lib/typeguards";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EquityChart } from "@/components/dashboard/EquityChart";
 import { ColumnChart } from "@/components/dashboard/ColumnChart";
-import { MultiLineChart } from "@/components/dashboard/MultiLineChart";
 
 type OkShape = {
   meta?: { generatedAt?: string };
@@ -48,9 +49,7 @@ function lineSeries(rows: any[], dateKey: string, valKey: string) {
     })
     .filter(Boolean) as { d: Date; v: number }[];
 
-  return dedupeSort(pts)
-    .map((p) => ({ date: p.date, equity: p.v }))
-    .slice(-365);
+  return dedupeSort(pts).map((p) => ({ date: p.date, equity: p.v })).slice(-365);
 }
 
 function barSeries(rows: any[], dateKey: string, valKey: string) {
@@ -63,9 +62,7 @@ function barSeries(rows: any[], dateKey: string, valKey: string) {
     })
     .filter(Boolean) as { d: Date; v: number }[];
 
-  return dedupeSort(pts)
-    .map((p) => ({ date: p.date, value: p.v }))
-    .slice(-365);
+  return dedupeSort(pts).map((p) => ({ date: p.date, value: p.v })).slice(-365);
 }
 
 function latestString(rows: any[], key: string): string | null {
@@ -76,6 +73,12 @@ function latestString(rows: any[], key: string): string | null {
   return null;
 }
 
+function fmtMaybeNumber(v: any) {
+  const n = toNumber(v);
+  if (!Number.isFinite(n)) return v ?? "—";
+  return new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(n);
+}
+
 export default async function PerformancePage() {
   const data = await fetchDashboardData();
   const ok = isOk<OkShape>(data);
@@ -84,135 +87,85 @@ export default async function PerformancePage() {
   const rsRows = (ok ? data.riskState?.rows ?? [] : []) as any[];
   const pfRows = (ok ? data.profitFactor?.rows ?? [] : []) as any[];
 
-  // KPIs (authoritative)
+  const subtitle = ok
+    ? `Last refresh: ${data.meta?.generatedAt ?? "Unknown"}`
+    : `Data error: ${(data as any)?.error ?? "Unknown error"}`;
+
+  // KPIs
   const kpiCumPnl = ok ? data.kpis?.cumulative_pnl_latest ?? null : null;
   const kpiDrawdown = ok ? data.kpis?.drawdown_latest ?? null : null;
   const kpiPf30d = ok ? data.kpis?.pf30d_latest ?? null : null;
   const kpiWinRate30d = latestString(rsRows, "Win Rate (30d)");
 
-  // Charts
-  const drawdown = lineSeries(eqRows, "date", "drawdown"); // {date, equity} where equity = drawdown value
-  const cumNet30d = lineSeries(pfRows, "Date", "cum_net_30d");
-  const avgNetTrade30d = barSeries(pfRows, "Date", "avg_net_trade_30d");
-
-  // Rolling Win Rate (30d)
-  const rollingWR = ((ok ? data.rollingWinRate30d?.rows ?? [] : []) as any[])
-    .map((r) => {
+  // Charts (these were already correct in your sheet mapping)
+  const cumulativeNet30d = lineSeries(pfRows, "Date", "cum_net_30d");
+  const rollingWinRate30d = (ok ? (data.rollingWinRate30d?.rows ?? []) : [])
+    .map((r: any) => {
       const d = toDate(r?.date);
       const v = toNumber(r?.value);
       if (!d || !Number.isFinite(v)) return null;
       return { d, v };
     })
     .filter(Boolean) as { d: Date; v: number }[];
-
-  rollingWR.sort((a, b) => a.d.getTime() - b.d.getTime());
-  const rollingWRSeries = dedupeSort(rollingWR)
+  rollingWinRate30d.sort((a, b) => a.d.getTime() - b.d.getTime());
+  const rollingWRSeries = dedupeSort(rollingWinRate30d)
     .map((p) => ({ date: p.date, equity: p.v }))
     .slice(-365);
 
-  const subtitle = ok
-    ? `Last refresh: ${data.meta?.generatedAt ?? "Unknown"}`
-    : `Data error: ${(data as any)?.error ?? "Unknown error"}`;
-
-  // Remap drawdown into MultiLineChart-friendly format
-  const drawdownForRed = drawdown.map((p) => ({ date: p.date, drawdown: p.equity }));
+  const drawdown = lineSeries(eqRows, "date", "drawdown");
+  const avgNetTrade30d = barSeries(pfRows, "Date", "avg_net_trade_30d");
 
   return (
     <AppShell>
-      <div className="space-y-6">
-        <div>
-          <div className="text-xl font-semibold tracking-tight">Performance Summary</div>
-          <div className="text-sm text-muted-foreground">{subtitle}</div>
-        </div>
+      <PageHeader title="Performance Summary" subtitle={subtitle} />
 
-        {/* KPI strip */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Card className="rounded-2xl">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-muted-foreground">
-                Cumulative PnL (latest)
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-semibold tracking-tight">{kpiCumPnl ?? "—"}</div>
-            </CardContent>
-          </Card>
+      {/* KPI strip */}
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <KpiCard label="Cumulative PnL (latest)" value={fmtMaybeNumber(kpiCumPnl)} />
+        <KpiCard label="Drawdown (latest)" value={fmtMaybeNumber(kpiDrawdown)} />
+        <KpiCard label="PF (30d)" value={fmtMaybeNumber(kpiPf30d)} />
+        <KpiCard label="Win Rate (30d)" value={kpiWinRate30d ?? "—"} />
+      </div>
 
-          <Card className="rounded-2xl">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-muted-foreground">
-                Drawdown (latest)
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-semibold tracking-tight">{kpiDrawdown ?? "—"}</div>
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-2xl">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-muted-foreground">PF (30d)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-semibold tracking-tight">{kpiPf30d ?? "—"}</div>
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-2xl">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-muted-foreground">Win Rate (30d)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-semibold tracking-tight">{kpiWinRate30d ?? "—"}</div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <Card className="rounded-2xl">
-          <CardHeader>
+      {/* Chart grid */}
+      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+        <Card className="rounded-2xl border-border/70 bg-card/40 backdrop-blur">
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-sm font-semibold">Cumulative Net PnL (30d)</CardTitle>
+            <span className="text-[11px] text-muted-foreground">365d</span>
           </CardHeader>
           <CardContent>
-            <EquityChart data={cumNet30d} />
+            <EquityChart data={cumulativeNet30d} />
           </CardContent>
         </Card>
 
-        <Card className="rounded-2xl">
-          <CardHeader>
-            <CardTitle className="text-sm font-semibold">Avg Net per Trade (30d)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ColumnChart data={avgNetTrade30d} mode="profitLoss" name="Avg Net / Trade (30d)" />
-          </CardContent>
-        </Card>
-
-        <Card className="rounded-2xl">
-          <CardHeader>
+        <Card className="rounded-2xl border-border/70 bg-card/40 backdrop-blur">
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-sm font-semibold">Rolling Win Rate (30d)</CardTitle>
+            <span className="text-[11px] text-muted-foreground">365d</span>
           </CardHeader>
           <CardContent>
             <EquityChart data={rollingWRSeries} />
           </CardContent>
         </Card>
 
-        <Card className="rounded-2xl">
-          <CardHeader>
-            <CardTitle className="text-sm font-semibold">Drawdown</CardTitle>
+        <Card className="rounded-2xl border-border/70 bg-card/40 backdrop-blur">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-sm font-semibold">Avg Net per Trade (30d)</CardTitle>
+            <span className="text-[11px] text-muted-foreground">365d</span>
           </CardHeader>
           <CardContent>
-            <MultiLineChart
-              data={drawdownForRed}
-              curve="linear"
-              yTight
-              lines={[
-                {
-                  key: "drawdown",
-                  label: "Drawdown",
-                  stroke: "hsl(0 70% 55% / 0.85)",
-                  strokeWidth: 2.3,
-                },
-              ]}
-            />
+            <ColumnChart data={avgNetTrade30d} mode="profitLoss" name="Avg Net / Trade (30d)" />
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-2xl border-border/70 bg-card/40 backdrop-blur">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-sm font-semibold">Drawdown</CardTitle>
+            <span className="text-[11px] text-muted-foreground">365d</span>
+          </CardHeader>
+          <CardContent>
+            <EquityChart data={drawdown} />
           </CardContent>
         </Card>
       </div>
