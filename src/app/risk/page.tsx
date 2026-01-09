@@ -253,8 +253,6 @@ export default async function RiskPage() {
               data={scatterData}
               xKey="expectancy"
               yKey="risk_pct"
-              xTooltipLabel="Expectancy"
-              yTooltipLabel="Risk %"
             />
           </CardContent>
         </Card>
