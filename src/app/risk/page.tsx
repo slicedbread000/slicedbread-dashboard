@@ -20,43 +20,50 @@ function toNumber(x: any): number {
   const n = Number(String(x ?? "").replace(/[^0-9.\-]/g, ""));
   return Number.isFinite(n) ? n : NaN;
 }
+
 function toDate(x: any): Date | null {
   if (!x) return null;
   const d = new Date(String(x).trim());
   return isNaN(d.getTime()) ? null : d;
 }
+
 function dedupeSort(points: { d: Date; v: number }[]) {
   points.sort((a, b) => a.d.getTime() - b.d.getTime());
   const byDay = new Map<string, number>();
   for (const p of points) byDay.set(p.d.toISOString().slice(0, 10), p.v);
   return Array.from(byDay.entries()).map(([date, v]) => ({ date, v }));
 }
+
 function lineSeries(rows: any[], dateKey: string, valKey: string) {
   const pts = (rows || [])
     .map((r) => {
-      const d = toDate(r[dateKey]);
-      const v = toNumber(r[valKey]);
+      const d = toDate(r?.[dateKey]);
+      const v = toNumber(r?.[valKey]);
       if (!d || !Number.isFinite(v)) return null;
       return { d, v };
     })
     .filter(Boolean) as { d: Date; v: number }[];
+
   return dedupeSort(pts)
     .map((p) => ({ date: p.date, equity: p.v }))
     .slice(-365);
 }
+
 function barSeries(rows: any[], dateKey: string, valKey: string) {
   const pts = (rows || [])
     .map((r) => {
-      const d = toDate(r[dateKey]);
-      const v = toNumber(r[valKey]);
+      const d = toDate(r?.[dateKey]);
+      const v = toNumber(r?.[valKey]);
       if (!d || !Number.isFinite(v)) return null;
       return { d, v };
     })
     .filter(Boolean) as { d: Date; v: number }[];
+
   return dedupeSort(pts)
     .map((p) => ({ date: p.date, value: p.v }))
     .slice(-365);
 }
+
 function latestString(rows: any[], key: string): string | null {
   for (let i = (rows?.length ?? 0) - 1; i >= 0; i--) {
     const v = rows[i]?.[key];
@@ -94,7 +101,12 @@ export default async function RiskPage() {
     .filter(Boolean) as { d: Date; equity: number; b3: number; b45: number; b525: number }[];
 
   zonePts.sort((a, b) => a.d.getTime() - b.d.getTime());
-  const zonesByDay = new Map<string, { equity: number; b3?: number; b45?: number; b525?: number }>();
+
+  const zonesByDay = new Map<
+    string,
+    { equity: number; b3?: number; b45?: number; b525?: number }
+  >();
+
   for (const p of zonePts) {
     const key = p.d.toISOString().slice(0, 10);
     zonesByDay.set(key, {
@@ -172,7 +184,9 @@ export default async function RiskPage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-2">
           <Card className="rounded-2xl">
             <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-muted-foreground">Drawdown %</CardTitle>
+              <CardTitle className="text-xs font-medium text-muted-foreground">
+                Drawdown %
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-semibold tracking-tight">{drawdownPct ?? "—"}</div>
@@ -181,7 +195,9 @@ export default async function RiskPage() {
 
           <Card className="rounded-2xl">
             <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-muted-foreground">Peak Equity</CardTitle>
+              <CardTitle className="text-xs font-medium text-muted-foreground">
+                Peak Equity
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-semibold tracking-tight">{peakEquity ?? "—"}</div>
@@ -191,17 +207,43 @@ export default async function RiskPage() {
 
         <Card className="rounded-2xl">
           <CardHeader>
-            <CardTitle className="text-sm font-semibold">Equity Curve with Risk Cut Zones</CardTitle>
+            <CardTitle className="text-sm font-semibold">
+              Equity Curve with Risk Cut Zones
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <MultiLineChart
               data={equityWithZones}
               curve="linear"
+              yTight
               lines={[
-                { key: "equity_usd", label: "Equity", stroke: "#111827", strokeWidth: 2 },
-                { key: "band_m3", label: "Band -3%", stroke: "#9CA3AF", strokeWidth: 1, strokeDasharray: "6 4" },
-                { key: "band_m45", label: "Band -4.5%", stroke: "#6B7280", strokeWidth: 1, strokeDasharray: "6 4" },
-                { key: "band_m525", label: "Band -5.25%", stroke: "#4B5563", strokeWidth: 1, strokeDasharray: "6 4" },
+                {
+                  key: "equity_usd",
+                  label: "Equity",
+                  stroke: "hsl(var(--primary) / 0.95)",
+                  strokeWidth: 2.4,
+                },
+                {
+                  key: "band_m3",
+                  label: "Band -3%",
+                  stroke: "hsl(var(--muted-foreground) / 0.70)",
+                  strokeWidth: 1.4,
+                  strokeDasharray: "6 4",
+                },
+                {
+                  key: "band_m45",
+                  label: "Band -4.5%",
+                  stroke: "hsl(var(--muted-foreground) / 0.60)",
+                  strokeWidth: 1.4,
+                  strokeDasharray: "6 4",
+                },
+                {
+                  key: "band_m525",
+                  label: "Band -5.25%",
+                  stroke: "hsl(var(--muted-foreground) / 0.55)",
+                  strokeWidth: 1.4,
+                  strokeDasharray: "6 4",
+                },
               ]}
             />
           </CardContent>
@@ -221,7 +263,13 @@ export default async function RiskPage() {
             <CardTitle className="text-sm font-semibold">Expectancy vs Risk % (Scatter)</CardTitle>
           </CardHeader>
           <CardContent>
-            <ScatterPlot data={scatterData} xKey="expectancy" yKey="risk_pct" />
+            <ScatterPlot
+              data={scatterData}
+              xKey="expectancy"
+              yKey="risk_pct"
+              xLabel="Expectancy"
+              yLabel="Risk %"
+            />
           </CardContent>
         </Card>
 
@@ -233,9 +281,10 @@ export default async function RiskPage() {
             <MultiLineChart
               data={edgeExposureRolling}
               curve="linear"
+              yTight
               lines={[
-                { key: "edge", label: "Edge", stroke: "#111827", strokeWidth: 2 },
-                { key: "exposure", label: "Exposure", stroke: "#6B7280", strokeWidth: 2 },
+                { key: "edge", label: "Edge", stroke: "hsl(var(--primary) / 0.95)", strokeWidth: 2.4 },
+                { key: "exposure", label: "Exposure", stroke: "hsl(var(--chart-2) / 0.95)", strokeWidth: 2.2 },
               ]}
             />
           </CardContent>
@@ -255,7 +304,7 @@ export default async function RiskPage() {
             <CardTitle className="text-sm font-semibold">Consecutive Losses</CardTitle>
           </CardHeader>
           <CardContent>
-            <ColumnChart data={lossStreak} />
+            <ColumnChart data={lossStreak} mode="lossOnly" />
           </CardContent>
         </Card>
       </div>
