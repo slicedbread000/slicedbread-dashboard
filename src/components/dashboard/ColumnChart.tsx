@@ -46,7 +46,10 @@ function TooltipRow({
   return (
     <div className="flex items-center justify-between gap-6 text-sm">
       <div className="flex items-center gap-2">
-        <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: color }} />
+        <span
+          className="inline-block h-2.5 w-2.5 rounded-full"
+          style={{ background: color }}
+        />
         <span className="text-muted-foreground">{label}</span>
       </div>
       <span style={{ color }} className="font-medium tabular-nums">
@@ -60,12 +63,22 @@ function TooltipBox({ active, payload, label, name }: any) {
   if (!active || !payload || payload.length === 0) return null;
 
   const p = payload[0];
-  const color = p.color || "hsl(var(--primary) / 0.95)";
+
+  // IMPORTANT:
+  // With per-bar coloring via <Cell fill=...>, the real color is on p.payload.fill
+  const color =
+    p?.payload?.fill ||
+    p?.color ||
+    "hsl(var(--primary) / 0.95)";
 
   return (
     <div className="rounded-xl border bg-popover/95 p-3 shadow-sm backdrop-blur text-popover-foreground">
       <div className="mb-2 text-xs text-muted-foreground">{label}</div>
-      <TooltipRow color={color} label={name ?? p.name ?? "Value"} value={formatNumber(p.value)} />
+      <TooltipRow
+        color={color}
+        label={name ?? p.name ?? "Value"}
+        value={formatNumber(p.value)}
+      />
     </div>
   );
 }
