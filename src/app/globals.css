@@ -32,93 +32,131 @@
   --color-input: hsl(var(--input));
   --color-ring: hsl(var(--ring));
 
-  --radius: var(--radius);
-
   --color-chart-1: hsl(var(--chart-1));
   --color-chart-2: hsl(var(--chart-2));
   --color-chart-3: hsl(var(--chart-3));
   --color-chart-4: hsl(var(--chart-4));
   --color-chart-5: hsl(var(--chart-5));
+
+  /* Optional “sidebar” tokens (safe even if unused) */
+  --color-sidebar: hsl(var(--sidebar));
+  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
+  --color-sidebar-primary: hsl(var(--sidebar-primary));
+  --color-sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground));
+  --color-sidebar-accent: hsl(var(--sidebar-accent));
+  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
+  --color-sidebar-border: hsl(var(--sidebar-border));
+  --color-sidebar-ring: hsl(var(--sidebar-ring));
+}
+
+:root {
+  /* Light tokens (kept sane for dev, but you’re running dark by default) */
+  --background: 0 0% 100%;
+  --foreground: 222 47% 11%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 11%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 47% 11%;
+
+  /* Green brand (professional, not neon) */
+  --primary: 142 71% 32%;
+  --primary-foreground: 144 70% 96%;
+
+  --secondary: 210 40% 96%;
+  --secondary-foreground: 222 47% 11%;
+
+  --muted: 210 40% 96%;
+  --muted-foreground: 215 16% 47%;
+
+  --accent: 142 45% 92%;
+  --accent-foreground: 142 71% 18%;
+
+  --destructive: 0 72% 50%;
+  --destructive-foreground: 0 0% 98%;
+
+  --border: 214 32% 91%;
+  --input: 214 32% 91%;
+  --ring: 142 71% 32%;
+
+  /* Charts */
+  --chart-1: 142 71% 32%; /* green */
+  --chart-2: 199 89% 48%; /* cyan/blue */
+  --chart-3: 43 96% 56%;  /* amber */
+  --chart-4: 262 83% 58%; /* violet */
+  --chart-5: 0 72% 50%;   /* red */
+
+  /* Sidebar */
+  --sidebar: 0 0% 100%;
+  --sidebar-foreground: 222 47% 11%;
+  --sidebar-primary: 142 71% 32%;
+  --sidebar-primary-foreground: 144 70% 96%;
+  --sidebar-accent: 142 45% 92%;
+  --sidebar-accent-foreground: 142 71% 18%;
+  --sidebar-border: 214 32% 91%;
+  --sidebar-ring: 142 71% 32%;
+
+  --radius: 1rem;
+}
+
+.dark {
+  /* Deep “Wall Street” dark base */
+  --background: 222 47% 8%;
+  --foreground: 210 40% 98%;
+
+  /* Panels */
+  --card: 222 47% 10%;
+  --card-foreground: 210 40% 98%;
+
+  --popover: 222 47% 10%;
+  --popover-foreground: 210 40% 98%;
+
+  /* Green accents */
+  --primary: 142 76% 36%;
+  --primary-foreground: 144 70% 96%;
+
+  /* Subtle slate layers */
+  --secondary: 222 30% 14%;
+  --secondary-foreground: 210 40% 98%;
+
+  --muted: 222 25% 14%;
+  --muted-foreground: 215 20% 70%;
+
+  /* Hover/selection accents */
+  --accent: 142 40% 16%;
+  --accent-foreground: 142 76% 70%;
+
+  /* Red for losses */
+  --destructive: 0 72% 45%;
+  --destructive-foreground: 0 0% 98%;
+
+  /* Borders/inputs/rings */
+  --border: 222 24% 18%;
+  --input: 222 24% 18%;
+  --ring: 142 76% 40%;
+
+  /* Charts: readable on dark backgrounds */
+  --chart-1: 142 76% 45%; /* green */
+  --chart-2: 199 89% 55%; /* cyan */
+  --chart-3: 43 96% 60%;  /* amber */
+  --chart-4: 262 83% 65%; /* violet */
+  --chart-5: 0 72% 55%;   /* red */
+
+  /* Sidebar (slightly darker than cards) */
+  --sidebar: 222 47% 7%;
+  --sidebar-foreground: 210 40% 96%;
+  --sidebar-primary: 142 76% 40%;
+  --sidebar-primary-foreground: 144 70% 96%;
+  --sidebar-accent: 142 35% 14%;
+  --sidebar-accent-foreground: 142 76% 70%;
+  --sidebar-border: 222 24% 16%;
+  --sidebar-ring: 142 76% 40%;
 }
 
 @layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 222 47% 11%;
-
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
-
-    /* green accents */
-    --primary: 142 72% 38%;
-    --primary-foreground: 144 100% 97%;
-
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222 47% 11%;
-
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
-
-    --accent: 142 55% 92%;
-    --accent-foreground: 142 72% 22%;
-
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 142 72% 38%;
-
-    --radius: 1rem;
-
-    --chart-1: 142 72% 38%;
-    --chart-2: 160 60% 32%;
-    --chart-3: 132 55% 40%;
-    --chart-4: 176 50% 30%;
-    --chart-5: 110 45% 35%;
-  }
-
-  .dark {
-    /* dark base */
-    --background: 160 20% 6%;
-    --foreground: 150 15% 94%;
-
-    --card: 160 20% 8%;
-    --card-foreground: 150 15% 94%;
-
-    --popover: 160 20% 8%;
-    --popover-foreground: 150 15% 94%;
-
-    /* emerald accent */
-    --primary: 142 72% 45%;
-    --primary-foreground: 144 100% 97%;
-
-    --secondary: 160 18% 12%;
-    --secondary-foreground: 150 15% 92%;
-
-    --muted: 160 16% 12%;
-    --muted-foreground: 150 10% 65%;
-
-    --accent: 150 18% 14%;
-    --accent-foreground: 144 80% 90%;
-
-    --destructive: 0 70% 50%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 160 14% 18%;
-    --input: 160 14% 18%;
-    --ring: 142 72% 45%;
-
-    --radius: 1rem;
-
-    --chart-1: 142 72% 45%;
-    --chart-2: 160 60% 38%;
-    --chart-3: 132 55% 48%;
-    --chart-4: 176 50% 36%;
-    --chart-5: 110 45% 42%;
+  * {
+    border-color: hsl(var(--border));
   }
 
   html,
@@ -127,18 +165,21 @@
   }
 
   body {
+    margin: 0;
     background: hsl(var(--background));
     color: hsl(var(--foreground));
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
+  /* Subtle selection that matches the green theme */
+  ::selection {
+    background: hsl(var(--primary) / 0.25);
+  }
+
+  /* Clean focus ring */
   *:focus-visible {
     outline: none;
     box-shadow: 0 0 0 2px hsl(var(--ring) / 0.35);
-  }
-
-  ::selection {
-    background: hsl(var(--primary) / 0.25);
   }
 }
