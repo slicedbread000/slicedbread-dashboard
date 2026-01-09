@@ -30,7 +30,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <div className="flex">
         {/* Sidebar */}
-        <aside className="hidden md:flex md:w-72 md:flex-col border-r border-border/70 bg-card/35 backdrop-blur">
+        <aside className="relative hidden md:flex md:w-72 md:flex-col border-r border-border/70 bg-card/35 backdrop-blur">
+          {/* Restored: subtle edge glow / vertical design beside sidebar */}
+          <div className="pointer-events-none absolute right-0 top-0 h-full w-[10px]">
+            <div className="absolute inset-0 bg-[linear-gradient(to_right,transparent,hsl(var(--primary)/0.18),transparent)] opacity-70" />
+            <div className="absolute inset-0 bg-[radial-gradient(10px_600px_at_100%_20%,hsl(var(--primary)/0.28),transparent_70%)]" />
+          </div>
+
           <div className="px-6 py-6">
             <div className="flex items-center gap-2">
               <div className="h-2 w-2 rounded-full bg-primary shadow-[0_0_0_4px_hsl(var(--primary)/0.16)]" />
@@ -98,15 +104,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <div className="text-xs text-muted-foreground">Auto-updated from Sheets API</div>
               </div>
 
-              <div className="hidden sm:flex items-center gap-2">
-                <span className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/40 px-3 py-1.5 text-xs text-muted-foreground shadow-[0_0_0_1px_hsl(var(--primary)/0.06)]">
+              <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground">
+                <span className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/40 px-3 py-1.5 shadow-[0_0_0_1px_hsl(var(--primary)/0.06)]">
                   <span className="h-1.5 w-1.5 rounded-full bg-primary/90" />
-                  Protected
-                </span>
-
-                <span className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/40 px-3 py-1.5 text-xs text-muted-foreground">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400/80" />
-                  Live
+                  Secure
                 </span>
               </div>
             </div>

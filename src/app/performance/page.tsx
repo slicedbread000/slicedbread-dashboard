@@ -6,7 +6,13 @@ import { isOk } from "@/lib/typeguards";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EquityChart } from "@/components/dashboard/EquityChart";
 import { ColumnChart } from "@/components/dashboard/ColumnChart";
-import { formatNumber, intentHigherBetter, intentPosNeg, toNumber } from "@/lib/kpiLogic";
+import {
+  formatCurrencyUSD,
+  formatPercentSmart,
+  intentHigherBetter,
+  intentPosNeg,
+  toNumber,
+} from "@/lib/kpiLogic";
 
 type OkShape = {
   meta?: { generatedAt?: string };
@@ -16,7 +22,7 @@ type OkShape = {
   rollingWinRate30d?: { rows?: any[] };
   kpis?: {
     cumulative_pnl_latest?: any;
-    drawdown_latest?: any; // negative number is bad
+    drawdown_latest?: any; // negative is bad
     pf30d_latest?: any;
   };
 };
@@ -85,29 +91,21 @@ export default async function PerformancePage() {
   const kpiDrawdown = ok ? data.kpis?.drawdown_latest ?? null : null; // < 0 bad
   const kpiPf30d = ok ? data.kpis?.pf30d_latest ?? null : null;
 
-  // Win rate is decimal like 0.19
+  // Win rate can be 0.19 OR 19 depending on source -> smart formatter
   const kpiWinRate30d = latestNumber(rsRows, "Win Rate (30d)");
 
   // KPI intents
   const intentCumPnl = intentPosNeg(kpiCumPnl);
-
-  // your requirement: anything below 0 is bad
-  const intentDrawdown = intentPosNeg(kpiDrawdown);
-
-  // PF: higher is better (set a sensible neutral band)
+  const intentDrawdown = intentPosNeg(kpiDrawdown); // your rule: anything below 0 is bad
   const intentPf30d = intentHigherBetter(kpiPf30d, { goodGte: 1.2, badLte: 1.0 });
+  const intentWr30d = intentHigherBetter(kpiWinRate30d, { goodGte: 55, badLte: 45 }); // after smart % display
 
-  // WR: higher is better (still based on decimal)
-  const intentWr30d = intentHigherBetter(kpiWinRate30d, { goodGte: 0.55, badLte: 0.45 });
-
-  // KPI display
-  const displayCumPnl = formatNumber(kpiCumPnl, { decimals: 2 });
-  const displayDrawdown = formatNumber(kpiDrawdown, { decimals: 0 });
-  const displayPf30d = formatNumber(kpiPf30d, { decimals: 2 });
-  const displayWr30d =
-    kpiWinRate30d === null
-      ? "—"
-      : formatNumber(kpiWinRate30d, { multiply: 100, decimals: 1, suffix: "%" });
+  // KPI display ($ for these)
+  const displayCumPnl = formatCurrencyUSD(kpiCumPnl, 0);
+  const displayDrawdown = formatCurrencyUSD(kpiDrawdown, 0);
+  const displayPf30d =
+    kpiPf30d === null ? "—" : new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(kpiPf30d);
+  const displayWr30d = kpiWinRate30d === null ? "—" : formatPercentSmart(kpiWinRate30d, 0);
 
   // Charts
   const cumulativeNet30d = lineSeries(pfRows, "Date", "cum_net_30d");
@@ -134,7 +132,6 @@ export default async function PerformancePage() {
     <AppShell>
       <PageHeader title="Performance Summary" subtitle={subtitle} />
 
-      {/* KPI strip */}
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard label="Cumulative PnL (latest)" value={displayCumPnl} intent={intentCumPnl} />
         <KpiCard label="Drawdown (latest)" value={displayDrawdown} intent={intentDrawdown} />
@@ -142,7 +139,6 @@ export default async function PerformancePage() {
         <KpiCard label="Win Rate (30d)" value={displayWr30d} intent={intentWr30d} />
       </div>
 
-      {/* Chart grid */}
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <Card className="rounded-2xl border-border/70 bg-card/40 backdrop-blur">
           <CardHeader className="flex flex-row items-center justify-between">

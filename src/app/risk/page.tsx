@@ -8,7 +8,14 @@ import { MultiLineChart } from "@/components/dashboard/MultiLineChart";
 import { ColumnChart } from "@/components/dashboard/ColumnChart";
 import { ScatterPlot } from "@/components/dashboard/ScatterPlot";
 import { EquityChart } from "@/components/dashboard/EquityChart";
-import { formatNumber, intentHigherBetter, intentPosNeg, toNumber } from "@/lib/kpiLogic";
+import {
+  formatCurrencyUSD,
+  formatNumber,
+  intentAbsBands,
+  intentHigherBetter,
+  normalizePercentLike,
+  toNumber,
+} from "@/lib/kpiLogic";
 
 type OkShape = {
   meta?: { generatedAt?: string };
@@ -79,20 +86,18 @@ export default async function RiskPage() {
   const drawdownPctRaw = latestString(rsRows, "drawdown_pct");
   const peakEquity = ok ? data.kpis?.peak_equity_latest ?? null : null;
 
-  // drawdown_pct formatting (handles "-0.12" or "-12" or "-12%")
-  const ddNum = toNumber(drawdownPctRaw);
+  // Normalize drawdown% to percent units (e.g. -0.04 -> -4)
+  const ddPct = normalizePercentLike(drawdownPctRaw);
+
   const drawdownPctDisplay =
-    ddNum === null
-      ? drawdownPctRaw ?? "—"
-      : Math.abs(ddNum) <= 1.5
-      ? formatNumber(ddNum, { multiply: 100, decimals: 2, suffix: "%" })
-      : formatNumber(ddNum, { decimals: 2, suffix: "%" });
+    ddPct === null ? (drawdownPctRaw ?? "—") : formatNumber(ddPct, { decimals: 2, suffix: "%" });
 
-  // intents
-  // drawdown%: below 0 is bad (your rule)
-  const intentDrawdownPct = intentPosNeg(ddNum);
+  // Your new intent rule:
+  // bad if |dd| >= 4
+  // neutral if 2 <= |dd| < 4
+  // good if |dd| < 2
+  const intentDrawdownPct = intentAbsBands(ddPct, { goodAbsLt: 2, badAbsGte: 4 });
 
-  // peak equity: higher is better
   const intentPeakEquity = intentHigherBetter(peakEquity);
 
   // Charts
@@ -181,13 +186,11 @@ export default async function RiskPage() {
     <AppShell>
       <PageHeader title="Risk State" subtitle={subtitle} />
 
-      {/* KPI strip */}
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard label="Drawdown %" value={drawdownPctDisplay} intent={intentDrawdownPct} />
-        <KpiCard label="Peak Equity" value={formatNumber(peakEquity, { decimals: 0 })} intent={intentPeakEquity} />
+        <KpiCard label="Peak Equity" value={formatCurrencyUSD(peakEquity, 0)} intent={intentPeakEquity} />
       </div>
 
-      {/* Chart grid */}
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <Card className="rounded-2xl border-border/70 bg-card/40 backdrop-blur lg:col-span-2">
           <CardHeader className="flex flex-row items-center justify-between">
