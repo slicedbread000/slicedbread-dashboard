@@ -189,8 +189,7 @@ export default async function PerformancePage() {
             <EquityChart
               data={cumulativeNet30d}
               name="Cumulative Net PnL (30d)"
-              valueFormatter={usd0}
-              yTickFormatter={usd0}
+              format="currency"
             />
           </CardContent>
         </Card>
@@ -215,8 +214,7 @@ export default async function PerformancePage() {
               data={avgNetTrade30d}
               mode="profitLoss"
               name="Avg Net / Trade (30d)"
-              valueFormatter={usd0}
-              yTickFormatter={usd0}
+              format="currency"
             />
           </CardContent>
         </Card>
@@ -227,7 +225,7 @@ export default async function PerformancePage() {
             <span className="text-[11px] text-muted-foreground">365d</span>
           </CardHeader>
           <CardContent>
-            <EquityChart data={drawdown} name="Drawdown" stroke="hsl(0 75% 55% / 0.95)" valueFormatter={usd0} yTickFormatter={usd0} />
+            <EquityChart data={drawdown} name="Drawdown" stroke="hsl(0 75% 55% / 0.95)" format="currency" />
           </CardContent>
         </Card>
       </div>

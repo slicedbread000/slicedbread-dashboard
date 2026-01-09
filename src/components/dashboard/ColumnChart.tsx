@@ -1,6 +1,15 @@
 "use client";
 
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Cell } from "recharts";
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  Cell,
+} from "recharts";
 
 type Datum = { date: string; value: number };
 
@@ -10,24 +19,42 @@ type Props = {
   data: Datum[];
   mode?: Mode;
   name?: string; // label in tooltip
-  valueFormatter?: (v: any) => string; // tooltip value formatter
-  yTickFormatter?: (v: any) => string; // y-axis tick formatter
+  format?: "number" | "currency"; // NEW
+  currency?: string; // NEW
 };
 
 function num(x: any): number | null {
-  const n = typeof x === "number" ? x : Number(String(x ?? "").replace(/[^0-9.\-]/g, ""));
+  const n =
+    typeof x === "number" ? x : Number(String(x ?? "").replace(/[^0-9.\-]/g, ""));
   return Number.isFinite(n) ? n : null;
 }
 
-function formatNumber(v: any) {
+function formatValue(v: any, format: "number" | "currency", currency: string) {
   const n = num(v);
   if (n === null) return "";
+
+  if (format === "currency") {
+    return new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency,
+      maximumFractionDigits: 0,
+    }).format(n);
+  }
+
   return new Intl.NumberFormat(undefined, {
     maximumFractionDigits: Math.abs(n) < 1 ? 4 : 2,
   }).format(n);
 }
 
-function TooltipRow({ color, label, value }: { color: string; label: string; value: string }) {
+function TooltipRow({
+  color,
+  label,
+  value,
+}: {
+  color: string;
+  label: string;
+  value: string;
+}) {
   return (
     <div className="flex items-center justify-between gap-6 text-sm">
       <div className="flex items-center gap-2">
@@ -41,7 +68,7 @@ function TooltipRow({ color, label, value }: { color: string; label: string; val
   );
 }
 
-function TooltipBox({ active, payload, label, name, valueFormatter }: any) {
+function TooltipBox({ active, payload, label, name, format, currency }: any) {
   if (!active || !payload || payload.length === 0) return null;
 
   const p = payload[0];
@@ -49,17 +76,25 @@ function TooltipBox({ active, payload, label, name, valueFormatter }: any) {
   // With per-bar coloring via <Cell fill=...>, the real color is on p.payload.fill
   const color = p?.payload?.fill || p?.color || "hsl(var(--primary) / 0.95)";
 
-  const val = valueFormatter ? valueFormatter(p.value) : formatNumber(p.value);
-
   return (
     <div className="rounded-xl border bg-popover/95 p-3 shadow-sm backdrop-blur text-popover-foreground">
       <div className="mb-2 text-xs text-muted-foreground">{label}</div>
-      <TooltipRow color={color} label={name ?? p.name ?? "Value"} value={val} />
+      <TooltipRow
+        color={color}
+        label={name ?? p.name ?? "Value"}
+        value={formatValue(p.value, format, currency)}
+      />
     </div>
   );
 }
 
-export function ColumnChart({ data, mode = "default", name = "Value", valueFormatter, yTickFormatter }: Props) {
+export function ColumnChart({
+  data,
+  mode = "default",
+  name = "Value",
+  format = "number",
+  currency = "USD",
+}: Props) {
   if (!data || data.length === 0) {
     return <div className="text-sm text-muted-foreground">No data.</div>;
   }
@@ -77,7 +112,7 @@ export function ColumnChart({ data, mode = "default", name = "Value", valueForma
     return { ...d, fill };
   });
 
-  const axisFmt = yTickFormatter ?? (valueFormatter ? valueFormatter : formatNumber);
+  const tickFormatter = (v: any) => formatValue(v, format, currency);
 
   return (
     <div className="w-full">
@@ -86,8 +121,8 @@ export function ColumnChart({ data, mode = "default", name = "Value", valueForma
           <BarChart data={shaped}>
             <CartesianGrid strokeDasharray="3 3" opacity={0.18} />
             <XAxis dataKey="date" tick={{ fontSize: 12 }} minTickGap={24} />
-            <YAxis tick={{ fontSize: 12 }} width={88} tickFormatter={axisFmt} />
-            <Tooltip content={<TooltipBox name={name} valueFormatter={valueFormatter} />} />
+            <YAxis tick={{ fontSize: 12 }} width={92} tickFormatter={tickFormatter} />
+            <Tooltip content={<TooltipBox name={name} format={format} currency={currency} />} />
             <Bar dataKey="value" name={name} radius={[6, 6, 2, 2]}>
               {shaped.map((entry, idx) => (
                 <Cell key={`cell-${idx}`} fill={entry.fill} />

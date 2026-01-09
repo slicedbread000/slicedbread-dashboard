@@ -101,7 +101,7 @@ export default async function Home() {
           <CardTitle className="text-sm font-semibold">Cumulative PnL</CardTitle>
         </CardHeader>
         <CardContent>
-          <EquityChart data={cumulativePnlData} name="Cumulative PnL" valueFormatter={usd0} yTickFormatter={usd0} />
+          <EquityChart data={cumulativePnlData} name="Cumulative PnL" format="currency" />
         </CardContent>
       </Card>
 
@@ -110,7 +110,7 @@ export default async function Home() {
           <CardTitle className="text-sm font-semibold">Net Worth</CardTitle>
         </CardHeader>
         <CardContent>
-          <NetWorthChart data={netWorthData} valueFormatter={usd0} yTickFormatter={usd0} />
+          <NetWorthChart data={netWorthData} format="currency" />
         </CardContent>
       </Card>
     </AppShell>
