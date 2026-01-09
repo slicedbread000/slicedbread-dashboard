@@ -1,8 +1,22 @@
 import { AppShell } from "@/components/layout/AppShell";
 import { fetchDashboardData } from "@/lib/dashboardApi";
+import { isOk } from "@/lib/typeguards";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EquityChart } from "@/components/dashboard/EquityChart";
 import { ColumnChart } from "@/components/dashboard/ColumnChart";
+
+type OkShape = {
+  meta?: { generatedAt?: string };
+  equityCurve?: { rows?: any[] };
+  riskState?: { rows?: any[] };
+  profitFactor?: { rows?: any[] };
+  rollingWinRate30d?: { rows?: any[] };
+  kpis?: {
+    cumulative_pnl_latest?: any;
+    drawdown_latest?: any;
+    pf30d_latest?: any;
+  };
+};
 
 function toNumber(x: any): number {
   if (typeof x === "number") return x;
@@ -29,7 +43,9 @@ function lineSeries(rows: any[], dateKey: string, valKey: string) {
       return { d, v };
     })
     .filter(Boolean) as { d: Date; v: number }[];
-  return dedupeSort(pts).map((p) => ({ date: p.date, equity: p.v })).slice(-365);
+  return dedupeSort(pts)
+    .map((p) => ({ date: p.date, equity: p.v }))
+    .slice(-365);
 }
 function barSeries(rows: any[], dateKey: string, valKey: string) {
   const pts = (rows || [])
@@ -40,7 +56,9 @@ function barSeries(rows: any[], dateKey: string, valKey: string) {
       return { d, v };
     })
     .filter(Boolean) as { d: Date; v: number }[];
-  return dedupeSort(pts).map((p) => ({ date: p.date, value: p.v })).slice(-365);
+  return dedupeSort(pts)
+    .map((p) => ({ date: p.date, value: p.v }))
+    .slice(-365);
 }
 function latestString(rows: any[], key: string): string | null {
   for (let i = (rows?.length ?? 0) - 1; i >= 0; i--) {
@@ -52,15 +70,16 @@ function latestString(rows: any[], key: string): string | null {
 
 export default async function PerformancePage() {
   const data = await fetchDashboardData();
+  const ok = isOk<OkShape>(data);
 
-  const eqRows = (data?.equityCurve?.rows ?? []) as any[];
-  const rsRows = (data?.riskState?.rows ?? []) as any[];
-  const pfRows = (data?.profitFactor?.rows ?? []) as any[];
+  const eqRows = (ok ? data.equityCurve?.rows ?? [] : []) as any[];
+  const rsRows = (ok ? data.riskState?.rows ?? [] : []) as any[];
+  const pfRows = (ok ? data.profitFactor?.rows ?? [] : []) as any[];
 
-  // KPIs (authoritative from Apps Script, which reads Equity_Curve columns directly)
-  const kpiCumPnl = data?.kpis?.cumulative_pnl_latest ?? null;
-  const kpiDrawdown = data?.kpis?.drawdown_latest ?? null;
-  const kpiPf30d = data?.kpis?.pf30d_latest ?? null;
+  // KPIs (authoritative from Apps Script)
+  const kpiCumPnl = ok ? data.kpis?.cumulative_pnl_latest ?? null : null;
+  const kpiDrawdown = ok ? data.kpis?.drawdown_latest ?? null : null;
+  const kpiPf30d = ok ? data.kpis?.pf30d_latest ?? null : null;
   const kpiWinRate30d = latestString(rsRows, "Win Rate (30d)");
 
   // Charts you said are accurate:
@@ -71,7 +90,7 @@ export default async function PerformancePage() {
   const avgNetTrade30d = barSeries(pfRows, "Date", "avg_net_trade_30d");
 
   // Rolling Win Rate (30d) from API series (Equity_Curve F + W)
-  const rollingWR = ((data?.rollingWinRate30d?.rows ?? []) as any[])
+  const rollingWR = ((ok ? data.rollingWinRate30d?.rows ?? [] : []) as any[])
     .map((r) => {
       const d = toDate(r?.date);
       const v = toNumber(r?.value);
@@ -81,16 +100,20 @@ export default async function PerformancePage() {
     .filter(Boolean) as { d: Date; v: number }[];
 
   rollingWR.sort((a, b) => a.d.getTime() - b.d.getTime());
-  const rollingWRSeries = dedupeSort(rollingWR).map((p) => ({ date: p.date, equity: p.v })).slice(-365);
+  const rollingWRSeries = dedupeSort(rollingWR)
+    .map((p) => ({ date: p.date, equity: p.v }))
+    .slice(-365);
+
+  const subtitle = ok
+    ? `Last refresh: ${data.meta?.generatedAt ?? "Unknown"}`
+    : `Data error: ${(data as any)?.error ?? "Unknown error"}`;
 
   return (
     <AppShell>
       <div className="space-y-6">
         <div>
           <div className="text-xl font-semibold tracking-tight">Performance Summary</div>
-          <div className="text-sm text-muted-foreground">
-            Last refresh: {data?.meta?.generatedAt ?? "Unknown"}
-          </div>
+          <div className="text-sm text-muted-foreground">{subtitle}</div>
         </div>
 
         {/* KPI strip */}
@@ -175,3 +198,4 @@ export default async function PerformancePage() {
     </AppShell>
   );
 }
+```0
