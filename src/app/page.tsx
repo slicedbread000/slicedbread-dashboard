@@ -26,6 +26,16 @@ function toDate(x: any): Date | null {
   return null;
 }
 
+function formatCurrencyUSD(v: any, decimals = 0) {
+  const n = toNumber(v);
+  if (!Number.isFinite(n)) return "";
+  return new Intl.NumberFormat(undefined, {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: decimals,
+  }).format(n);
+}
+
 function parseCumulativePnl(rows: any[]): { date: string; equity: number }[] {
   const parsed = (rows || [])
     .map((r) => {
@@ -80,6 +90,8 @@ export default async function Home() {
   const subtitle = ok ? "System overview and capital trajectory." : `Data error: ${(data as any)?.error ?? "Unknown error"}`;
   const pillText = refreshAt ? `Last refresh: ${refreshAt}` : undefined;
 
+  const usd0 = (v: any) => formatCurrencyUSD(v, 0);
+
   return (
     <AppShell>
       <PageHeader title="Command Center" subtitle={subtitle} status={status} pillText={pillText} />
@@ -89,7 +101,7 @@ export default async function Home() {
           <CardTitle className="text-sm font-semibold">Cumulative PnL</CardTitle>
         </CardHeader>
         <CardContent>
-          <EquityChart data={cumulativePnlData} />
+          <EquityChart data={cumulativePnlData} name="Cumulative PnL" valueFormatter={usd0} yTickFormatter={usd0} />
         </CardContent>
       </Card>
 
@@ -98,7 +110,7 @@ export default async function Home() {
           <CardTitle className="text-sm font-semibold">Net Worth</CardTitle>
         </CardHeader>
         <CardContent>
-          <NetWorthChart data={netWorthData} />
+          <NetWorthChart data={netWorthData} valueFormatter={usd0} yTickFormatter={usd0} />
         </CardContent>
       </Card>
     </AppShell>

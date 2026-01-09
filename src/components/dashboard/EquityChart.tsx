@@ -1,14 +1,6 @@
 "use client";
 
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  CartesianGrid,
-} from "recharts";
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
 type Point = { date: string; equity: number };
 
@@ -16,6 +8,8 @@ type Props = {
   data: Point[];
   name?: string; // tooltip label
   stroke?: string; // line color
+  valueFormatter?: (v: any) => string; // tooltip value formatter
+  yTickFormatter?: (v: any) => string; // y-axis tick formatter
 };
 
 function num(x: any): number | null {
@@ -31,15 +25,7 @@ function formatNumber(v: any) {
   }).format(n);
 }
 
-function TooltipRow({
-  color,
-  label,
-  value,
-}: {
-  color: string;
-  label: string;
-  value: string;
-}) {
+function TooltipRow({ color, label, value }: { color: string; label: string; value: string }) {
   return (
     <div className="flex items-center justify-between gap-6 text-sm">
       <div className="flex items-center gap-2">
@@ -53,17 +39,18 @@ function TooltipRow({
   );
 }
 
-function TooltipBox({ active, payload, label }: any) {
+function TooltipBox({ active, payload, label, valueFormatter }: any) {
   if (!active || !payload || payload.length === 0) return null;
 
   const p = payload[0];
   const color = p.color || "hsl(var(--primary) / 0.95)";
   const name = p.name ?? "Value";
+  const val = valueFormatter ? valueFormatter(p.value) : formatNumber(p.value);
 
   return (
     <div className="rounded-xl border bg-popover/95 p-3 shadow-sm backdrop-blur text-popover-foreground">
       <div className="mb-2 text-xs text-muted-foreground">{label}</div>
-      <TooltipRow color={color} label={name} value={formatNumber(p.value)} />
+      <TooltipRow color={color} label={name} value={val} />
     </div>
   );
 }
@@ -72,10 +59,14 @@ export function EquityChart({
   data,
   name = "Value",
   stroke = "hsl(var(--primary) / 0.95)",
+  valueFormatter,
+  yTickFormatter,
 }: Props) {
   if (!data || data.length === 0) {
     return <div className="text-sm text-muted-foreground">No data.</div>;
   }
+
+  const axisFmt = yTickFormatter ?? (valueFormatter ? valueFormatter : formatNumber);
 
   return (
     <div className="w-full">
@@ -84,16 +75,9 @@ export function EquityChart({
           <LineChart data={data}>
             <CartesianGrid strokeDasharray="3 3" opacity={0.18} />
             <XAxis dataKey="date" tick={{ fontSize: 12 }} minTickGap={24} />
-            <YAxis tick={{ fontSize: 12 }} width={80} tickFormatter={formatNumber} />
-            <Tooltip content={<TooltipBox />} />
-            <Line
-              type="monotone"
-              dataKey="equity"
-              name={name}
-              dot={false}
-              strokeWidth={2.4}
-              stroke={stroke}
-            />
+            <YAxis tick={{ fontSize: 12 }} width={88} tickFormatter={axisFmt} />
+            <Tooltip content={<TooltipBox valueFormatter={valueFormatter} />} />
+            <Line type="monotone" dataKey="equity" name={name} dot={false} strokeWidth={2.4} stroke={stroke} />
           </LineChart>
         </ResponsiveContainer>
       </div>

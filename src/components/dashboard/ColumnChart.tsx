@@ -1,15 +1,6 @@
 "use client";
 
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-  Cell,
-} from "recharts";
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Cell } from "recharts";
 
 type Datum = { date: string; value: number };
 
@@ -19,6 +10,8 @@ type Props = {
   data: Datum[];
   mode?: Mode;
   name?: string; // label in tooltip
+  valueFormatter?: (v: any) => string; // tooltip value formatter
+  yTickFormatter?: (v: any) => string; // y-axis tick formatter
 };
 
 function num(x: any): number | null {
@@ -34,22 +27,11 @@ function formatNumber(v: any) {
   }).format(n);
 }
 
-function TooltipRow({
-  color,
-  label,
-  value,
-}: {
-  color: string;
-  label: string;
-  value: string;
-}) {
+function TooltipRow({ color, label, value }: { color: string; label: string; value: string }) {
   return (
     <div className="flex items-center justify-between gap-6 text-sm">
       <div className="flex items-center gap-2">
-        <span
-          className="inline-block h-2.5 w-2.5 rounded-full"
-          style={{ background: color }}
-        />
+        <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: color }} />
         <span className="text-muted-foreground">{label}</span>
       </div>
       <span style={{ color }} className="font-medium tabular-nums">
@@ -59,31 +41,25 @@ function TooltipRow({
   );
 }
 
-function TooltipBox({ active, payload, label, name }: any) {
+function TooltipBox({ active, payload, label, name, valueFormatter }: any) {
   if (!active || !payload || payload.length === 0) return null;
 
   const p = payload[0];
 
-  // IMPORTANT:
   // With per-bar coloring via <Cell fill=...>, the real color is on p.payload.fill
-  const color =
-    p?.payload?.fill ||
-    p?.color ||
-    "hsl(var(--primary) / 0.95)";
+  const color = p?.payload?.fill || p?.color || "hsl(var(--primary) / 0.95)";
+
+  const val = valueFormatter ? valueFormatter(p.value) : formatNumber(p.value);
 
   return (
     <div className="rounded-xl border bg-popover/95 p-3 shadow-sm backdrop-blur text-popover-foreground">
       <div className="mb-2 text-xs text-muted-foreground">{label}</div>
-      <TooltipRow
-        color={color}
-        label={name ?? p.name ?? "Value"}
-        value={formatNumber(p.value)}
-      />
+      <TooltipRow color={color} label={name ?? p.name ?? "Value"} value={val} />
     </div>
   );
 }
 
-export function ColumnChart({ data, mode = "default", name = "Value" }: Props) {
+export function ColumnChart({ data, mode = "default", name = "Value", valueFormatter, yTickFormatter }: Props) {
   if (!data || data.length === 0) {
     return <div className="text-sm text-muted-foreground">No data.</div>;
   }
@@ -101,6 +77,8 @@ export function ColumnChart({ data, mode = "default", name = "Value" }: Props) {
     return { ...d, fill };
   });
 
+  const axisFmt = yTickFormatter ?? (valueFormatter ? valueFormatter : formatNumber);
+
   return (
     <div className="w-full">
       <div className="w-full aspect-[16/6] min-h-[240px]">
@@ -108,8 +86,8 @@ export function ColumnChart({ data, mode = "default", name = "Value" }: Props) {
           <BarChart data={shaped}>
             <CartesianGrid strokeDasharray="3 3" opacity={0.18} />
             <XAxis dataKey="date" tick={{ fontSize: 12 }} minTickGap={24} />
-            <YAxis tick={{ fontSize: 12 }} width={80} tickFormatter={formatNumber} />
-            <Tooltip content={<TooltipBox name={name} />} />
+            <YAxis tick={{ fontSize: 12 }} width={88} tickFormatter={axisFmt} />
+            <Tooltip content={<TooltipBox name={name} valueFormatter={valueFormatter} />} />
             <Bar dataKey="value" name={name} radius={[6, 6, 2, 2]}>
               {shaped.map((entry, idx) => (
                 <Cell key={`cell-${idx}`} fill={entry.fill} />

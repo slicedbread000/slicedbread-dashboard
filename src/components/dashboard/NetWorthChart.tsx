@@ -1,16 +1,14 @@
 "use client";
 
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  CartesianGrid,
-} from "recharts";
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
 type Point = { date: string; networth: number };
+
+type Props = {
+  data: Point[];
+  valueFormatter?: (v: any) => string;
+  yTickFormatter?: (v: any) => string;
+};
 
 function num(x: any): number | null {
   const n = typeof x === "number" ? x : Number(String(x ?? "").replace(/[^0-9.\-]/g, ""));
@@ -25,15 +23,7 @@ function formatNumber(v: any) {
   }).format(n);
 }
 
-function TooltipRow({
-  color,
-  label,
-  value,
-}: {
-  color: string;
-  label: string;
-  value: string;
-}) {
+function TooltipRow({ color, label, value }: { color: string; label: string; value: string }) {
   return (
     <div className="flex items-center justify-between gap-6 text-sm">
       <div className="flex items-center gap-2">
@@ -47,33 +37,33 @@ function TooltipRow({
   );
 }
 
-function TooltipBox({ active, payload, label }: any) {
+function TooltipBox({ active, payload, label, valueFormatter }: any) {
   if (!active || !payload || payload.length === 0) return null;
   const p = payload[0];
   const color = p.color || "hsl(var(--primary) / 0.95)";
+  const val = valueFormatter ? valueFormatter(p.value) : formatNumber(p.value);
 
   return (
     <div className="rounded-xl border bg-popover/95 p-3 shadow-sm backdrop-blur text-popover-foreground">
       <div className="mb-2 text-xs text-muted-foreground">{label}</div>
-      <TooltipRow color={color} label={p.name ?? "Net Worth"} value={formatNumber(p.value)} />
+      <TooltipRow color={color} label={p.name ?? "Net Worth"} value={val} />
     </div>
   );
 }
 
-export function NetWorthChart({ data }: { data: Point[] }) {
+export function NetWorthChart({ data, valueFormatter, yTickFormatter }: Props) {
   if (!data || data.length === 0) {
     return <div className="text-sm text-muted-foreground">No net worth data.</div>;
   }
 
-  // Compute tight y-axis domain with padding
+  const axisFmt = yTickFormatter ?? (valueFormatter ? valueFormatter : formatNumber);
+
+  // tight y-axis domain with padding
   const values = data.map((d) => d.networth).filter((v) => Number.isFinite(v)) as number[];
   const min = Math.min(...values);
   const max = Math.max(...values);
-
-  // Padding: 2% of range (or a small fallback if range is tiny)
   const range = max - min;
   const pad = range > 0 ? range * 0.02 : Math.max(Math.abs(max) * 0.01, 1);
-
   const yDomain: [number, number] = [min - pad, max + pad];
 
   return (
@@ -83,13 +73,8 @@ export function NetWorthChart({ data }: { data: Point[] }) {
           <LineChart data={data}>
             <CartesianGrid strokeDasharray="3 3" opacity={0.18} />
             <XAxis dataKey="date" tick={{ fontSize: 12 }} minTickGap={24} />
-            <YAxis
-              tick={{ fontSize: 12 }}
-              width={80}
-              tickFormatter={formatNumber}
-              domain={yDomain}
-            />
-            <Tooltip content={<TooltipBox />} />
+            <YAxis tick={{ fontSize: 12 }} width={88} tickFormatter={axisFmt} domain={yDomain} />
+            <Tooltip content={<TooltipBox valueFormatter={valueFormatter} />} />
             <Line
               type="monotone"
               dataKey="networth"

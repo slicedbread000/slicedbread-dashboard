@@ -5,10 +5,10 @@ import { usePathname } from "next/navigation";
 import { Separator } from "@/components/ui/separator";
 
 const nav = [
-  { href: "/", label: "Command Center" },
-  { href: "/performance", label: "Performance Summary" },
-  { href: "/bots", label: "Bot States" },
-  { href: "/risk", label: "Risk State" },
+  { href: "/", label: "Command Center", icon: "🧠" },
+  { href: "/performance", label: "Performance Summary", icon: "📈" },
+  { href: "/bots", label: "Bot States", icon: "🤖" },
+  { href: "/risk", label: "Risk State", icon: "🛡️" },
 ];
 
 function cx(...classes: Array<string | false | null | undefined>) {
@@ -62,10 +62,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     )}
                   />
 
-                  {/* Left “marker” (restored) */}
+                  {/* Left icon marker (restored) */}
                   <span
                     className={cx(
-                      "mr-2 inline-flex h-5 w-5 items-center justify-center rounded-md border text-[11px] transition",
+                      "mr-2 inline-flex h-5 w-5 items-center justify-center rounded-md border text-[12px] leading-none transition",
                       active
                         ? "border-primary/40 bg-primary/10 text-primary"
                         : "border-border/60 bg-card/30 text-muted-foreground group-hover:border-primary/30 group-hover:text-primary/90"
@@ -73,7 +73,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     aria-hidden="true"
                     title={item.label}
                   >
-                    •
+                    {item.icon}
                   </span>
 
                   <span className={cx("font-medium flex-1", active ? "text-foreground" : "text-foreground/90")}>

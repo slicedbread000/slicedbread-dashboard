@@ -120,9 +120,25 @@ export default async function PerformancePage() {
   const pfN = toNumber(kpiPf30dRaw);
   const wrN = toNumber(kpiWinRate30dRaw);
 
-  const cumPnlIntent = Number.isFinite(cumPnlN) ? (cumPnlN > 0 ? "good" : cumPnlN < 0 ? "bad" : "neutral") : "neutral";
-  const drawdownIntent = Number.isFinite(drawdownN) ? (drawdownN < 0 ? "bad" : drawdownN > 0 ? "good" : "neutral") : "neutral";
+  const cumPnlIntent = Number.isFinite(cumPnlN)
+    ? cumPnlN > 0
+      ? "good"
+      : cumPnlN < 0
+      ? "bad"
+      : "neutral"
+    : "neutral";
+
+  // anything below 0 is bad for drawdown
+  const drawdownIntent = Number.isFinite(drawdownN)
+    ? drawdownN < 0
+      ? "bad"
+      : drawdownN > 0
+      ? "good"
+      : "neutral"
+    : "neutral";
+
   const pfIntent = Number.isFinite(pfN) ? (pfN >= 1.2 ? "good" : pfN >= 1.0 ? "neutral" : "bad") : "neutral";
+
   const wrPct = Number.isFinite(wrN) ? (Math.abs(wrN) <= 1 ? wrN * 100 : wrN) : NaN;
   const wrIntent = Number.isFinite(wrPct) ? (wrPct >= 55 ? "good" : wrPct >= 45 ? "neutral" : "bad") : "neutral";
 
@@ -146,31 +162,21 @@ export default async function PerformancePage() {
   const drawdown = lineSeries(eqRows, "date", "drawdown");
   const avgNetTrade30d = barSeries(pfRows, "Date", "avg_net_trade_30d");
 
+  const usd0 = (v: any) => {
+    const n = toNumber(v);
+    if (!Number.isFinite(n)) return "";
+    return new Intl.NumberFormat(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
+  };
+
   return (
     <AppShell>
       <PageHeader title="Performance Summary" subtitle={subtitle} />
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard
-          label="Cumulative PnL (latest)"
-          value={fmtCurrency(kpiCumPnlRaw)}
-          intent={cumPnlIntent as any}
-        />
-        <KpiCard
-          label="Drawdown (latest)"
-          value={fmtCurrency(kpiDrawdownRaw)}
-          intent={drawdownIntent as any}
-        />
-        <KpiCard
-          label="PF (30d)"
-          value={fmtNumber(kpiPf30dRaw)}
-          intent={pfIntent as any}
-        />
-        <KpiCard
-          label="Win Rate (30d)"
-          value={fmtPercentFromMaybeFraction(kpiWinRate30dRaw)}
-          intent={wrIntent as any}
-        />
+        <KpiCard label="Cumulative PnL (latest)" value={fmtCurrency(kpiCumPnlRaw)} intent={cumPnlIntent as any} />
+        <KpiCard label="Drawdown (latest)" value={fmtCurrency(kpiDrawdownRaw)} intent={drawdownIntent as any} />
+        <KpiCard label="PF (30d)" value={fmtNumber(kpiPf30dRaw)} intent={pfIntent as any} />
+        <KpiCard label="Win Rate (30d)" value={fmtPercentFromMaybeFraction(kpiWinRate30dRaw)} intent={wrIntent as any} />
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
@@ -180,7 +186,12 @@ export default async function PerformancePage() {
             <span className="text-[11px] text-muted-foreground">365d</span>
           </CardHeader>
           <CardContent>
-            <EquityChart data={cumulativeNet30d} name="Cumulative Net PnL (30d)" />
+            <EquityChart
+              data={cumulativeNet30d}
+              name="Cumulative Net PnL (30d)"
+              valueFormatter={usd0}
+              yTickFormatter={usd0}
+            />
           </CardContent>
         </Card>
 
@@ -200,7 +211,13 @@ export default async function PerformancePage() {
             <span className="text-[11px] text-muted-foreground">365d</span>
           </CardHeader>
           <CardContent>
-            <ColumnChart data={avgNetTrade30d} mode="profitLoss" name="Avg Net / Trade (30d)" />
+            <ColumnChart
+              data={avgNetTrade30d}
+              mode="profitLoss"
+              name="Avg Net / Trade (30d)"
+              valueFormatter={usd0}
+              yTickFormatter={usd0}
+            />
           </CardContent>
         </Card>
 
@@ -210,11 +227,7 @@ export default async function PerformancePage() {
             <span className="text-[11px] text-muted-foreground">365d</span>
           </CardHeader>
           <CardContent>
-            <EquityChart
-              data={drawdown}
-              name="Drawdown"
-              stroke="hsl(0 75% 55% / 0.95)"
-            />
+            <EquityChart data={drawdown} name="Drawdown" stroke="hsl(0 75% 55% / 0.95)" valueFormatter={usd0} yTickFormatter={usd0} />
           </CardContent>
         </Card>
       </div>
